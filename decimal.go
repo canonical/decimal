@@ -332,7 +332,7 @@ func (d Decimal) Float64() (f float64, exact bool) {
 //     -12.345
 //
 func (d Decimal) String() string {
-	number := (d.string())
+	number := d.string()
 	if d.exp < 0 {
 		number = strings.TrimRight(number, "0")
 		number = strings.TrimRight(number, ".")

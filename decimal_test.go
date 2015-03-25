@@ -173,7 +173,6 @@ func TestDecimal_rescale(t *testing.T) {
 				negs[i] = "-" + s
 			}
 			tests[Inp{-p.int, p.exp, p.rescale}] = negs
-
 		}
 	}
 
