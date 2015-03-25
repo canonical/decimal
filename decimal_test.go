@@ -158,33 +158,38 @@ func TestDecimal_rescale(t *testing.T) {
 		exp     int32
 		rescale int32
 	}
-	tests := map[Inp]string{
-		Inp{1234, -3, -5}: "1.234",
-		Inp{1234, -3, 0}:  "1",
-		Inp{1234, 3, 0}:   "1234000",
-		Inp{1234, -4, -4}: "0.1234",
+	tests := map[Inp][]string{
+		Inp{1234, -3, -5}: []string{"1.234", "1.23400"},
+		Inp{1234, -3, 0}:  []string{"1", "1"},
+		Inp{1234, 3, 0}:   []string{"1234000", "1234000"},
+		Inp{1234, -4, -4}: []string{"0.1234", "0.1234"},
 	}
 
 	// add negatives
-	for p, s := range tests {
+	for p, ss := range tests {
 		if p.int > 0 {
-			tests[Inp{-p.int, p.exp, p.rescale}] = "-" + s
+			negs := make([]string, 2)
+			for i, s := range ss {
+				negs[i] = "-" + s
+			}
+			tests[Inp{-p.int, p.exp, p.rescale}] = negs
+
 		}
 	}
 
 	for input, s := range tests {
 		d := New(input.int, input.exp).rescale(input.rescale)
 
-		if d.String() != s {
+		if d.String() != s[0] {
 			t.Errorf("expected %s, got %s (%s, %d)",
-				s, d.String(),
+				s[0], d.String(),
 				d.value.String(), d.exp)
 		}
 
 		// test StringScaled
 		s2 := New(input.int, input.exp).StringScaled(input.rescale)
-		if s2 != s {
-			t.Errorf("expected %s, got %s", s, s2)
+		if s2 != s[1] {
+			t.Errorf("expected %s, got %s", s[1], s2)
 		}
 	}
 }

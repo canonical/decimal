@@ -332,6 +332,15 @@ func (d Decimal) Float64() (f float64, exact bool) {
 //     -12.345
 //
 func (d Decimal) String() string {
+	number := (d.string())
+	if d.exp < 0 {
+		number = strings.TrimRight(number, "0")
+		number = strings.TrimRight(number, ".")
+	}
+	return number
+}
+
+func (d Decimal) string() string {
 	if d.exp >= 0 {
 		return d.rescale(0).value.String()
 	}
@@ -351,14 +360,6 @@ func (d Decimal) String() string {
 		fractionalPart = strings.Repeat("0", num0s) + str
 	}
 
-	i := len(fractionalPart) - 1
-	for ; i >= 0; i-- {
-		if fractionalPart[i] != '0' {
-			break
-		}
-	}
-	fractionalPart = fractionalPart[:i+1]
-
 	number := intPart
 	if len(fractionalPart) > 0 {
 		number += "." + fractionalPart
@@ -367,13 +368,12 @@ func (d Decimal) String() string {
 	if d.value.Sign() < 0 {
 		return "-" + number
 	}
-
 	return number
 }
 
 // StringScaled first scales the decimal then calls .String() on it.
 func (d Decimal) StringScaled(exp int32) string {
-	return d.rescale(exp).String()
+	return d.rescale(exp).string()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
