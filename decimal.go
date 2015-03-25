@@ -266,7 +266,7 @@ func (d Decimal) Div(d2 Decimal) Decimal {
 	if err != nil {
 		panic(err) // this should never happen
 	}
-	return ret
+	return ret.fixScale()
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
@@ -332,15 +332,6 @@ func (d Decimal) Float64() (f float64, exact bool) {
 //     -12.345
 //
 func (d Decimal) String() string {
-	number := d.string()
-	if d.exp < 0 {
-		number = strings.TrimRight(number, "0")
-		number = strings.TrimRight(number, ".")
-	}
-	return number
-}
-
-func (d Decimal) string() string {
 	if d.exp >= 0 {
 		return d.rescale(0).value.String()
 	}
@@ -373,7 +364,33 @@ func (d Decimal) string() string {
 
 // StringScaled first scales the decimal then calls .String() on it.
 func (d Decimal) StringScaled(exp int32) string {
-	return d.rescale(exp).string()
+	return d.rescale(exp).String()
+}
+
+// fixScale reduces the exponent of the decimal to first significant decimal points,
+// so 1.0000000 becomes 1.
+func (d Decimal) fixScale() Decimal {
+	if d.exp >= 0 {
+		return d
+	}
+	m := new(big.Int)
+	zero := big.NewInt(0)
+	var exp int32
+	for exp = 1; exp <= -d.exp; exp++ {
+		expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
+		m.Mod(d.value, expScale)
+		if m.Cmp(zero) != 0 {
+			break
+		}
+	}
+	exp = exp - 1
+	expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
+	value := new(big.Int).Div(d.value, expScale)
+
+	return Decimal{
+		value: value,
+		exp:   d.exp + exp,
+	}
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
