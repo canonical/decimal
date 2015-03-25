@@ -197,6 +197,51 @@ func (d Decimal) rescale(exp int32) Decimal {
 	}
 }
 
+// Round returns a rounded decimal number.
+//
+// Rounding can only be performed with an exponent larger than the
+// exponent of the number:
+//
+// Example:
+//
+//     d := New(1234545, -3)
+//     d.Round(-4) returns an error
+//     d.Round(-2) returns 1234.55
+//     d.Round(-1) returns 1234.5
+//     d.Round(0) returns 1235
+//     d.Round(1) returns 1230
+func (d Decimal) Round(exp int32) (Decimal, error) {
+	if exp == d.exp {
+		return d, nil
+	} else if exp < d.exp { // can't round "up"
+		return Zero, fmt.Errorf("invalid rounding exponent")
+	}
+
+	d.ensureInitialized()
+	diff := math.Abs(float64(exp) - float64(d.exp))
+	value := new(big.Int).Set(d.value)
+
+	expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(diff)), nil)
+	rem := new(big.Int)
+	value, rem = value.QuoRem(value, expScale, rem)
+	remRat := new(big.Rat).SetFrac(rem, expScale)
+
+	if sign := value.Sign(); sign > 0 {
+		if cmp := remRat.Cmp(big.NewRat(1, 2)); cmp >= 0 {
+			value = value.Add(value, big.NewInt(1))
+		}
+	} else if sign < 0 {
+		// round negative numbers up: -7.5 ~ -7
+		if cmp := remRat.Cmp(big.NewRat(-1, 2)); cmp < 0 {
+			value = value.Sub(value, big.NewInt(1))
+		}
+	}
+	return Decimal{
+		value: value,
+		exp:   exp,
+	}, nil
+}
+
 // Abs returns the absolute value of the decimal.
 func (d Decimal) Abs() Decimal {
 	d.ensureInitialized()
