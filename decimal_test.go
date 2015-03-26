@@ -167,6 +167,7 @@ func TestDecimal_rescale(t *testing.T) {
 		Inp{1234, -3, 0}:  Res{"1", "1"},
 		Inp{1234, 3, 0}:   Res{"1234000", "1234000"},
 		Inp{1234, -4, -4}: Res{"0.1234", "0.1234"},
+		Inp{1234, 0, 0}:   Res{"1234", "1234"},
 	}
 
 	// add negatives
@@ -333,6 +334,7 @@ func TestDecimal_Div(t *testing.T) {
 
 	inputs := map[Inp]string{
 		Inp{"6", "3"}:                            "2",
+		Inp{"0", "1"}:                            "0",
 		Inp{"10", "2"}:                           "5",
 		Inp{"2.2", "1.1"}:                        "2",
 		Inp{"-2.2", "-1.1"}:                      "2",

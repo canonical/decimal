@@ -43,11 +43,14 @@ import (
 //
 var DivisionPrecision = 16
 
-// Zero constant, to make computations faster.
-var Zero = New(0, 1)
+var (
+	// Zero constant, to make computations faster.
+	Zero = New(0, 1)
 
-var tenInt = big.NewInt(10)
-var oneInt = big.NewInt(1)
+	zeroInt = big.NewInt(0)
+	tenInt  = big.NewInt(10)
+	oneInt  = big.NewInt(1)
+)
 
 // Decimal represents a fixed-point decimal. It is immutable.
 // number = value * 10 ^ exp
@@ -370,22 +373,27 @@ func (d Decimal) StringScaled(exp int32) string {
 // fixScale reduces the exponent of the decimal to first significant decimal points,
 // so 1.0000000 becomes 1.
 func (d Decimal) fixScale() Decimal {
+	if d.value.Cmp(zeroInt) == 0 {
+		return Decimal{
+			value: zeroInt,
+			exp:   0,
+		}
+	}
 	if d.exp >= 0 {
 		return d
 	}
+
 	m := new(big.Int)
-	zero := big.NewInt(0)
+	value := new(big.Int).Set(d.value)
 	var exp int32
-	for exp = 1; exp <= -d.exp; exp++ {
-		expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
-		m.Mod(d.value, expScale)
-		if m.Cmp(zero) != 0 {
-			break
-		}
+
+	for m.Cmp(zeroInt) == 0 {
+		exp++
+		value.DivMod(value, tenInt, m)
 	}
-	exp = exp - 1
+	exp--
 	expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
-	value := new(big.Int).Div(d.value, expScale)
+	value.Div(d.value, expScale)
 
 	return Decimal{
 		value: value,
