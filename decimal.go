@@ -210,11 +210,11 @@ func (d Decimal) rescale(exp int32) Decimal {
 //     d.Round(-1) returns 1234.5
 //     d.Round(0) returns 1235
 //     d.Round(1) returns 1230
-func (d Decimal) Round(exp int32) (Decimal, error) {
+func (d Decimal) Round(exp int32) Decimal {
 	if exp == d.exp {
-		return d, nil
+		return d
 	} else if exp < d.exp { // can't round "up"
-		return Zero, fmt.Errorf("invalid rounding exponent")
+		return d
 	}
 
 	d.ensureInitialized()
@@ -239,7 +239,7 @@ func (d Decimal) Round(exp int32) (Decimal, error) {
 	return Decimal{
 		value: value,
 		exp:   exp,
-	}, nil
+	}
 }
 
 // Abs returns the absolute value of the decimal.

@@ -207,13 +207,15 @@ func TestDecimalRound(t *testing.T) {
 		Inp{-2245, -3, -2}: "-2.24",
 		Inp{-3229, -3, -2}: "-3.23",
 		Inp{-423, 0, 1}:    "-420",
+		// Rounding up is a nop
+		Inp{1234, -3, -4}: "1.234",
+		Inp{1245, -3, -4}: "1.245",
+		Inp{1229, -3, -4}: "1.229",
+		Inp{123, 0, -1}:   "123",
 	}
 
 	for input, s := range tests {
-		d, err := New(input.int, input.exp).Round(input.rescale)
-		if err != nil {
-			t.Errorf("expected no error, got %v", err)
-		}
+		d := New(input.int, input.exp).Round(input.rescale)
 
 		if d.String() != s {
 			t.Errorf("expected %s, got %s (%s, %d)",
