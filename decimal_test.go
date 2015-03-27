@@ -204,7 +204,7 @@ func TestDecimalRound(t *testing.T) {
 		Inp{12345, -1, 1}: "1230",
 		// Negative cases.
 		Inp{-1234, -3, -2}: "-1.23",
-		Inp{-2245, -3, -2}: "-2.24",
+		Inp{-2245, -3, -2}: "-2.25",
 		Inp{-3229, -3, -2}: "-3.23",
 		Inp{-423, 0, 1}:    "-420",
 		// Rounding up is a nop
