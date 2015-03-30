@@ -43,11 +43,14 @@ import (
 //
 var DivisionPrecision = 16
 
-// Zero constant, to make computations faster.
-var Zero = New(0, 1)
+var (
+	// Zero constant, to make computations faster.
+	Zero = New(0, 1)
 
-var tenInt = big.NewInt(10)
-var oneInt = big.NewInt(1)
+	zeroInt = big.NewInt(0)
+	tenInt  = big.NewInt(10)
+	oneInt  = big.NewInt(1)
+)
 
 // Decimal represents a fixed-point decimal. It is immutable.
 // number = value * 10 ^ exp
@@ -295,7 +298,7 @@ func (d Decimal) Div(d2 Decimal) Decimal {
 	if err != nil {
 		panic(err) // this should never happen
 	}
-	return ret
+	return ret.fixScale()
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
@@ -380,14 +383,6 @@ func (d Decimal) String() string {
 		fractionalPart = strings.Repeat("0", num0s) + str
 	}
 
-	i := len(fractionalPart) - 1
-	for ; i >= 0; i-- {
-		if fractionalPart[i] != '0' {
-			break
-		}
-	}
-	fractionalPart = fractionalPart[:i+1]
-
 	number := intPart
 	if len(fractionalPart) > 0 {
 		number += "." + fractionalPart
@@ -396,13 +391,43 @@ func (d Decimal) String() string {
 	if d.value.Sign() < 0 {
 		return "-" + number
 	}
-
 	return number
 }
 
 // StringScaled first scales the decimal then calls .String() on it.
 func (d Decimal) StringScaled(exp int32) string {
 	return d.rescale(exp).String()
+}
+
+// fixScale reduces the exponent of the decimal to first significant decimal points,
+// so 1.0000000 becomes 1.
+func (d Decimal) fixScale() Decimal {
+	if d.value.Cmp(zeroInt) == 0 {
+		return Decimal{
+			value: zeroInt,
+			exp:   0,
+		}
+	}
+	if d.exp >= 0 {
+		return d
+	}
+
+	m := new(big.Int)
+	value := new(big.Int).Set(d.value)
+	var exp int32
+
+	for m.Cmp(zeroInt) == 0 {
+		exp++
+		value.DivMod(value, tenInt, m)
+	}
+	exp--
+	expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
+	value.Div(d.value, expScale)
+
+	return Decimal{
+		value: value,
+		exp:   d.exp + exp,
+	}
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.

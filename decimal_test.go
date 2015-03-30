@@ -113,13 +113,13 @@ func TestNewFromFloatWithExponent(t *testing.T) {
 		exp   int32
 	}
 	tests := map[Inp]string{
-		Inp{123.4, -3}:      "123.4",
+		Inp{123.4, -3}:      "123.400",
 		Inp{123.4, -1}:      "123.4",
 		Inp{123.412345, 1}:  "120",
 		Inp{123.412345, 0}:  "123",
 		Inp{123.412345, -5}: "123.41235",
 		Inp{123.412345, -6}: "123.412345",
-		Inp{123.412345, -7}: "123.412345",
+		Inp{123.412345, -7}: "123.4123450",
 	}
 
 	// add negatives
@@ -158,33 +158,42 @@ func TestDecimal_rescale(t *testing.T) {
 		exp     int32
 		rescale int32
 	}
-	tests := map[Inp]string{
-		Inp{1234, -3, -5}: "1.234",
-		Inp{1234, -3, 0}:  "1",
-		Inp{1234, 3, 0}:   "1234000",
-		Inp{1234, -4, -4}: "0.1234",
+	type Res struct {
+		Before string
+		After  string
+	}
+	tests := map[Inp]Res{
+		Inp{1234, -3, -5}: Res{"1.23400", "1.23400"},
+		Inp{1234, -3, 0}:  Res{"1", "1"},
+		Inp{1234, 3, 0}:   Res{"1234000", "1234000"},
+		Inp{1234, -4, -4}: Res{"0.1234", "0.1234"},
+		Inp{1234, 0, 0}:   Res{"1234", "1234"},
 	}
 
 	// add negatives
 	for p, s := range tests {
 		if p.int > 0 {
-			tests[Inp{-p.int, p.exp, p.rescale}] = "-" + s
+			negs := Res{
+				Before: "-" + s.Before,
+				After:  "-" + s.After,
+			}
+			tests[Inp{-p.int, p.exp, p.rescale}] = negs
 		}
 	}
 
 	for input, s := range tests {
 		d := New(input.int, input.exp).rescale(input.rescale)
 
-		if d.String() != s {
+		if d.String() != s.Before {
 			t.Errorf("expected %s, got %s (%s, %d)",
-				s, d.String(),
+				s.Before, d.String(),
 				d.value.String(), d.exp)
 		}
 
 		// test StringScaled
 		s2 := New(input.int, input.exp).StringScaled(input.rescale)
-		if s2 != s {
-			t.Errorf("expected %s, got %s", s, s2)
+		if s2 != s.After {
+			t.Errorf("expected %s, got %s", s.After, s2)
 		}
 	}
 }
@@ -231,12 +240,10 @@ func TestDecimal_Uninitialized(t *testing.T) {
 
 	decs := []Decimal{
 		a,
-		a.rescale(10),
 		a.Abs(),
 		a.Add(b),
 		a.Sub(b),
 		a.Mul(b),
-		a.Div(New(1, -1)),
 	}
 
 	for _, d := range decs {
@@ -264,7 +271,7 @@ func TestDecimal_Add(t *testing.T) {
 		Inp{"2454495034", "3451204593"}:   "5905699627",
 		Inp{"24544.95034", ".3451204593"}: "24545.2954604593",
 		Inp{".1", ".1"}:                   "0.2",
-		Inp{".1", "-.1"}:                  "0",
+		Inp{".1", "-.1"}:                  "0.0",
 		Inp{"0", "1.001"}:                 "1.001",
 	}
 
@@ -297,10 +304,10 @@ func TestDecimal_Sub(t *testing.T) {
 		Inp{"2454495034", "3451204593"}:   "-996709559",
 		Inp{"24544.95034", ".3451204593"}: "24544.6052195407",
 		Inp{".1", "-.1"}:                  "0.2",
-		Inp{".1", ".1"}:                   "0",
+		Inp{".1", ".1"}:                   "0.0",
 		Inp{"0", "1.001"}:                 "-1.001",
 		Inp{"1.001", "0"}:                 "1.001",
-		Inp{"2.3", ".3"}:                  "2",
+		Inp{"2.3", ".3"}:                  "2.0",
 	}
 
 	for inp, res := range inputs {
@@ -330,7 +337,7 @@ func TestDecimal_Mul(t *testing.T) {
 		Inp{"2454495034", "3451204593"}:   "8470964534836491162",
 		Inp{"24544.95034", ".3451204593"}: "8470.964534836491162",
 		Inp{".1", ".1"}:                   "0.01",
-		Inp{"0", "1.001"}:                 "0",
+		Inp{"0", "1.001"}:                 "0.000",
 	}
 
 	for inp, res := range inputs {
@@ -363,6 +370,7 @@ func TestDecimal_Div(t *testing.T) {
 
 	inputs := map[Inp]string{
 		Inp{"6", "3"}:                            "2",
+		Inp{"0", "1"}:                            "0",
 		Inp{"10", "2"}:                           "5",
 		Inp{"2.2", "1.1"}:                        "2",
 		Inp{"-2.2", "-1.1"}:                      "2",
