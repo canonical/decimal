@@ -189,6 +189,42 @@ func TestDecimal_rescale(t *testing.T) {
 	}
 }
 
+func TestDecimalRound(t *testing.T) {
+	type Inp struct {
+		int     int64
+		exp     int32
+		rescale int32
+	}
+	tests := map[Inp]string{
+		Inp{1234, -3, -2}: "1.23",
+		Inp{1245, -3, -2}: "1.25",
+		Inp{1229, -3, -2}: "1.23",
+		Inp{123, 0, 1}:    "120",
+		Inp{12345, -1, 0}: "1235",
+		Inp{12345, -1, 1}: "1230",
+		// Negative cases.
+		Inp{-1234, -3, -2}: "-1.23",
+		Inp{-2245, -3, -2}: "-2.25",
+		Inp{-3229, -3, -2}: "-3.23",
+		Inp{-423, 0, 1}:    "-420",
+		// Rounding up is a nop
+		Inp{1234, -3, -4}: "1.234",
+		Inp{1245, -3, -4}: "1.245",
+		Inp{1229, -3, -4}: "1.229",
+		Inp{123, 0, -1}:   "123",
+	}
+
+	for input, s := range tests {
+		d := New(input.int, input.exp).Round(input.rescale)
+
+		if d.String() != s {
+			t.Errorf("expected %s, got %s (%s, %d)",
+				s, d.String(),
+				d.value.String(), d.exp)
+		}
+	}
+}
+
 func TestDecimal_Uninitialized(t *testing.T) {
 	a := Decimal{}
 	b := Decimal{}

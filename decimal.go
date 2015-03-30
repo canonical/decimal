@@ -197,6 +197,35 @@ func (d Decimal) rescale(exp int32) Decimal {
 	}
 }
 
+// Round returns a rounded decimal number.
+//
+// Rounding can only be performed with an exponent larger than the
+// exponent of the number. If the exponent is smaller, the number is
+// returned unchanged.
+//
+// Example:
+//
+//     d := New(1234545, -3)
+//     d.Round(-4) returns 1234.545
+//     d.Round(-2) returns 1234.55
+//     d.Round(-1) returns 1234.5
+//     d.Round(0) returns 1235
+//     d.Round(1) returns 1230
+//
+//     d := New(-1235, -3)
+//     d.Round(-2) returns 1.24
+func (d Decimal) Round(exp int32) Decimal {
+	if exp == d.exp {
+		return d
+	} else if exp < d.exp { // nothing to round
+		return d
+	}
+	d.ensureInitialized()
+
+	rounded := d.Add(New(int64(d.value.Sign()*5), exp-1))
+	return rounded.rescale(exp)
+}
+
 // Abs returns the absolute value of the decimal.
 func (d Decimal) Abs() Decimal {
 	d.ensureInitialized()
