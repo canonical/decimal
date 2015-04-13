@@ -288,17 +288,25 @@ func (d Decimal) Mul(d2 Decimal) Decimal {
 // DivisionPrecision digits after the decimal point.
 func (d Decimal) Div(d2 Decimal) Decimal {
 	// NOTE(vadim): division is hard, use Rat to do it
-	ratNum := d.Rat()
-	ratDenom := d2.Rat()
+	z := big.NewInt(0)
+	rem := big.NewInt(0)
 
-	quoRat := big.NewRat(0, 1).Quo(ratNum, ratDenom)
+	z.QuoRem(d.value, d2.value, rem)
+	if rem.Cmp(zeroInt) == 0 {
+		return Decimal{
+			value: z,
+			exp:   d.exp - d2.exp,
+		}
+	}
+
+	quoRat := big.NewRat(0, 1).Quo(d.Rat(), d2.Rat())
 
 	// HACK(vadim): converting from Rat to Decimal inefficiently for now
 	ret, err := NewFromString(quoRat.FloatString(DivisionPrecision))
 	if err != nil {
 		panic(err) // this should never happen
 	}
-	return ret.fixScale()
+	return ret
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
@@ -397,37 +405,6 @@ func (d Decimal) String() string {
 // StringScaled first scales the decimal then calls .String() on it.
 func (d Decimal) StringScaled(exp int32) string {
 	return d.rescale(exp).String()
-}
-
-// fixScale reduces the exponent of the decimal to first significant decimal points,
-// so 1.0000000 becomes 1.
-func (d Decimal) fixScale() Decimal {
-	if d.value.Cmp(zeroInt) == 0 {
-		return Decimal{
-			value: zeroInt,
-			exp:   0,
-		}
-	}
-	if d.exp >= 0 {
-		return d
-	}
-
-	m := new(big.Int)
-	value := new(big.Int).Set(d.value)
-	var exp int32
-
-	for m.Cmp(zeroInt) == 0 {
-		exp++
-		value.DivMod(value, tenInt, m)
-	}
-	exp--
-	expScale := new(big.Int).Exp(tenInt, big.NewInt(int64(exp)), nil)
-	value.Div(d.value, expScale)
-
-	return Decimal{
-		value: value,
-		exp:   d.exp + exp,
-	}
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
