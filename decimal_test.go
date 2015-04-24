@@ -2,6 +2,8 @@ package decimal
 
 import (
 	"math"
+	"math/big"
+	"regexp"
 	"testing"
 )
 
@@ -148,6 +150,55 @@ func TestNewFromFloatWithExponent(t *testing.T) {
 		var d Decimal
 		if !didPanic(func() { d = NewFromFloatWithExponent(n, 0) }) {
 			t.Fatalf("Expected panic when creating a Decimal from %v, got %v instead", n, d.String())
+		}
+	}
+}
+
+func TestNewFromRat(t *testing.T) {
+	tests := []struct {
+		about  string
+		num    int64
+		denom  int64
+		expect string
+		error  string
+	}{{
+		about:  "integer",
+		num:    15,
+		denom:  1,
+		expect: "15",
+		error:  "",
+	}, {
+		about:  "decimal",
+		num:    15,
+		denom:  1000,
+		expect: "0.0150000000000000",
+		error:  "",
+	}, {
+		about:  "irrational",
+		num:    10,
+		denom:  6,
+		expect: "1.6666666666666667",
+		error:  "",
+	}, {
+		about:  "negative integer",
+		num:    -15,
+		denom:  1,
+		expect: "-15",
+		error:  "",
+	}}
+	for _, test := range tests {
+		d, err := NewFromRat(big.NewRat(test.num, test.denom))
+		if test.error == "" && err != nil {
+			t.Errorf("expected no error, got %v", err)
+		} else if test.error != "" && err == nil {
+			t.Errorf("expected error matching %q, got nil", test.error)
+		} else if test.error != "" && err != nil {
+			if match, _ := regexp.MatchString(test.error, err.Error()); match {
+				t.Errorf("error %v does not match %q", err, test.error)
+			}
+		}
+		if d.String() != test.expect {
+			t.Errorf("expected %q, got %q", test.expect, d.String())
 		}
 	}
 }
