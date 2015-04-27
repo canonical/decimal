@@ -113,6 +113,27 @@ func NewFromString(value string) (Decimal, error) {
 	}, nil
 }
 
+// NewFromRat returns a new Decimal from a big.Rat.
+//
+// Example:
+//
+//    d := NewFromRat(big.NewRat(10, 5))
+func NewFromRat(value *big.Rat) Decimal {
+	var str string
+	if value.IsInt() {
+		str = value.Num().String()
+	} else {
+		str = value.FloatString(DivisionPrecision)
+	}
+	d, err := NewFromString(str)
+	if err != nil {
+		// Panic here, because we just failed to parse a string
+		// we constructed.
+		panic(err)
+	}
+	return d
+}
+
 // NewFromFloat converts a float64 to Decimal.
 //
 // Example:
@@ -302,10 +323,7 @@ func (d Decimal) Div(d2 Decimal) Decimal {
 	quoRat := big.NewRat(0, 1).Quo(d.Rat(), d2.Rat())
 
 	// HACK(vadim): converting from Rat to Decimal inefficiently for now
-	ret, err := NewFromString(quoRat.FloatString(DivisionPrecision))
-	if err != nil {
-		panic(err) // this should never happen
-	}
+	ret := NewFromRat(quoRat)
 	return ret
 }
 

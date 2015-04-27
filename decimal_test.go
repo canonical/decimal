@@ -2,6 +2,7 @@ package decimal
 
 import (
 	"math"
+	"math/big"
 	"testing"
 )
 
@@ -148,6 +149,41 @@ func TestNewFromFloatWithExponent(t *testing.T) {
 		var d Decimal
 		if !didPanic(func() { d = NewFromFloatWithExponent(n, 0) }) {
 			t.Fatalf("Expected panic when creating a Decimal from %v, got %v instead", n, d.String())
+		}
+	}
+}
+
+func TestNewFromRat(t *testing.T) {
+	tests := []struct {
+		about  string
+		num    int64
+		denom  int64
+		expect string
+	}{{
+		about:  "integer",
+		num:    15,
+		denom:  1,
+		expect: "15",
+	}, {
+		about:  "decimal",
+		num:    15,
+		denom:  1000,
+		expect: "0.0150000000000000",
+	}, {
+		about:  "irrational",
+		num:    10,
+		denom:  6,
+		expect: "1.6666666666666667",
+	}, {
+		about:  "negative integer",
+		num:    -15,
+		denom:  1,
+		expect: "-15",
+	}}
+	for _, test := range tests {
+		d := NewFromRat(big.NewRat(test.num, test.denom))
+		if d.String() != test.expect {
+			t.Errorf("expected %q, got %q", test.expect, d.String())
 		}
 	}
 }
