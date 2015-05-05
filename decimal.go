@@ -113,6 +113,20 @@ func NewFromString(value string) (Decimal, error) {
 	}, nil
 }
 
+// MustNewFromString parses the provided string representation into a Decimal or panics if an error occurs.
+// Example:
+//
+//     d := MustNewFromString("-123.45")
+//     d2 := MustNewFromString(".0001")
+//
+func MustNewFromString(value string) Decimal {
+	d, err := NewFromString(value)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
 // NewFromRat returns a new Decimal from a big.Rat.
 //
 // Example:

@@ -85,6 +85,16 @@ func TestNewFromString(t *testing.T) {
 	}
 }
 
+func TestMustNewFromString(t *testing.T) {
+	for _, s := range tests {
+		t.Logf("testing string parsing for %q", s)
+		d := MustNewFromString(s)
+		if d.String() != s {
+			t.Errorf("expected %s, got %s", s, d.String())
+		}
+	}
+}
+
 func TestNewFromStringError(t *testing.T) {
 	tests := []string{
 		"",
@@ -110,6 +120,11 @@ func TestNewFromStringError(t *testing.T) {
 		if err == nil {
 			t.Errorf("error expected when parsing %s", s)
 		}
+
+		if !didPanic(func() { MustNewFromString(s) }) {
+			t.Errorf("expected panic when parsing %s", s)
+		}
+
 	}
 }
 
@@ -308,14 +323,9 @@ func TestAdd(t *testing.T) {
 
 	for input, expected := range inputs {
 		t.Logf("test %s + %s = %s", input.a, input.b, expected)
-		a, err := NewFromString(input.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(input.b)
-		if err != nil {
-			t.FailNow()
-		}
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Add(b)
 		if c.String() != expected {
 			t.Errorf("expected %s, got %s", expected, c.String())
@@ -345,14 +355,9 @@ func TestSub(t *testing.T) {
 
 	for input, expected := range inputs {
 		t.Logf("test %s - %s = %s", input.a, input.b, expected)
-		a, err := NewFromString(input.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(input.b)
-		if err != nil {
-			t.FailNow()
-		}
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Sub(b)
 		if c.String() != expected {
 			t.Errorf("expected %s, got %s", expected, c.String())
@@ -377,14 +382,9 @@ func TestMul(t *testing.T) {
 
 	for input, expected := range inputs {
 		t.Logf("test %s * %s = %s", input.a, input.b, expected)
-		a, err := NewFromString(input.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(input.b)
-		if err != nil {
-			t.FailNow()
-		}
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Mul(b)
 		if c.String() != expected {
 			t.Errorf("expected %s, got %s", expected, c.String())
@@ -423,14 +423,9 @@ func TestDecimalDiv(t *testing.T) {
 
 	for input, expected := range tests {
 		t.Logf("test %s / %s = %s", input.a, input.b, expected)
-		num, err := NewFromString(input.a)
-		if err != nil {
-			t.FailNow()
-		}
-		denom, err := NewFromString(input.b)
-		if err != nil {
-			t.FailNow()
-		}
+		num := MustNewFromString(input.a)
+		denom := MustNewFromString(input.b)
+
 		got := num.Div(denom)
 		if got.String() != expected {
 			t.Errorf("expected %s, got %v", expected, got)
