@@ -30,7 +30,6 @@ import (
 // doesn't divide exactly.
 //
 // Example:
-//
 //     d1 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
 //     d1.String() // output: "0.6666666666666667"
 //     d2 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(30000)
@@ -40,7 +39,6 @@ import (
 //     decimal.DivisionPrecision = 3
 //     d4 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
 //     d4.String() // output: "0.667"
-//
 var DivisionPrecision = 16
 
 var (
@@ -76,10 +74,8 @@ func New(value int64, exp int32) Decimal {
 // NewFromString returns a new Decimal from a string representation.
 //
 // Example:
-//
 //     d, err := NewFromString("-123.45")
 //     d2, err := NewFromString(".0001")
-//
 func NewFromString(value string) (Decimal, error) {
 	var intString string
 	var exp int32
@@ -113,10 +109,22 @@ func NewFromString(value string) (Decimal, error) {
 	}, nil
 }
 
+// MustNewFromString parses the provided string representation into a Decimal or panics if an error occurs.
+//
+// Example:
+//     d := MustNewFromString("-123.45")
+//     d2 := MustNewFromString(".0001")
+func MustNewFromString(value string) Decimal {
+	d, err := NewFromString(value)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
 // NewFromRat returns a new Decimal from a big.Rat.
 //
 // Example:
-//
 //    d := NewFromRat(big.NewRat(10, 5))
 func NewFromRat(value *big.Rat) Decimal {
 	var str string
@@ -135,13 +143,11 @@ func NewFromRat(value *big.Rat) Decimal {
 }
 
 // NewFromFloat converts a float64 to Decimal.
+// NOTE: this will panic on NaN, +/-inf
 //
 // Example:
-//
 //     NewFromFloat(123.45678901234567).String() // output: "123.4567890123456"
 //     NewFromFloat(.00000000000000001).String() // output: "0.00000000000000001"
-//
-// NOTE: this will panic on NaN, +/-inf
 func NewFromFloat(value float64) Decimal {
 	floor := math.Floor(value)
 
@@ -165,14 +171,12 @@ func NewFromFloat(value float64) Decimal {
 // number of fractional digits.
 //
 // Example:
-//
 //     NewFromFloatWithExponent(123.456, -2).String() // output: "123.46"
-//
 func NewFromFloatWithExponent(value float64, exp int32) Decimal {
 	mul := math.Pow(10, -float64(exp))
 	floatValue := value * mul
 	if math.IsNaN(floatValue) || math.IsInf(floatValue, 0) {
-		panic(fmt.Sprintf("Cannot create a Decimal from %v", floatValue))
+		panic(fmt.Sprintf("can't convert %v to decimal", floatValue))
 	}
 	dValue := big.NewInt(round(floatValue))
 
@@ -188,7 +192,6 @@ func NewFromFloatWithExponent(value float64, exp int32) Decimal {
 // NOTE: this will truncate, NOT round
 //
 // Example:
-//
 // 	d := New(12345, -4)
 //	d2 := d.rescale(-1)
 //	d3 := d2.rescale(-4)
@@ -197,11 +200,9 @@ func NewFromFloatWithExponent(value float64, exp int32) Decimal {
 //	println(d3)
 //
 // Output:
-//
 //	1.2345
 //	1.2
 //	1.2000
-//
 func (d Decimal) rescale(exp int32) Decimal {
 	d.ensureInitialized()
 	// NOTE(vadim): must convert exps to float64 before - to prevent overflow
@@ -228,7 +229,6 @@ func (d Decimal) rescale(exp int32) Decimal {
 // returned unchanged.
 //
 // Example:
-//
 //     d := New(1234545, -3)
 //     d.Round(-4) returns 1234.545
 //     d.Round(-2) returns 1234.55
@@ -328,11 +328,9 @@ func (d Decimal) Div(d2 Decimal) Decimal {
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
-//
 //     -1 if d <  d2
 //      0 if d == d2
 //     +1 if d >  d2
-//
 func (d Decimal) Cmp(d2 Decimal) int {
 	baseExp := min(d.exp, d2.exp)
 	rd := d.rescale(baseExp)
@@ -381,14 +379,11 @@ func (d Decimal) Float64() (f float64, exact bool) {
 // with the fixed point.
 //
 // Example:
-//
 //     d := New(-12345, -3)
 //     println(d.String())
 //
 // Output:
-//
 //     -12.345
-//
 func (d Decimal) String() string {
 	if d.exp >= 0 {
 		return d.rescale(0).value.String()
@@ -447,11 +442,10 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 }
 
 // Truncate truncates off digits from the number, without rounding.
-//
 // NOTE: precision is the last digit that will not be truncated (should be >= 0)
 //
+// Example:
 //     decimal.NewFromString("123.456").Truncate(2).String() // "123.45"
-//
 func (d Decimal) Truncate(precision int32) Decimal {
 	d.ensureInitialized()
 	if precision >= 0 && -precision > d.exp {

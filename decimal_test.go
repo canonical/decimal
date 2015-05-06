@@ -1,12 +1,14 @@
 package decimal
 
 import (
+	"fmt"
 	"math"
 	"math/big"
+	"regexp"
 	"testing"
 )
 
-var testTable = map[float64]string{
+var floatStringTests = map[float64]string{
 	3.141592653589793:   "3.141592653589793",
 	3:                   "3",
 	1234567890123456:    "1234567890123456",
@@ -30,57 +32,71 @@ var testTable = map[float64]string{
 }
 
 func TestNewFromFloat(t *testing.T) {
-	// add negatives
-	for f, s := range testTable {
-		if f > 0 {
-			testTable[-f] = "-" + s
+
+	for flt, expected := range floatStringTests {
+		t.Logf("running test: %f -> %s", flt, expected)
+		d := NewFromFloat(flt)
+		if d.String() != expected {
+			t.Errorf("expected %s, got %s", expected, d.String())
+		}
+		// Test negative values too.
+		if flt != 0 {
+			flt = -flt
+			expected = fmt.Sprintf("-%s", expected)
+			t.Logf("running test: %f -> %s", flt, expected)
+			d = NewFromFloat(flt)
+			if d.String() != expected {
+				t.Errorf("expected %s, got %s", expected, d.String())
+			}
 		}
 	}
+}
 
-	for f, s := range testTable {
-		d := NewFromFloat(f)
-		if d.String() != s {
-			t.Errorf("expected %s, got %s (%s, %d)",
-				s, d.String(),
-				d.value.String(), d.exp)
-		}
-	}
-
+func TestNewFromFloatPanics(t *testing.T) {
 	shouldPanicOn := []float64{
 		math.NaN(),
 		math.Inf(1),
 		math.Inf(-1),
 	}
 
-	for _, n := range shouldPanicOn {
+	for i, flt := range shouldPanicOn {
+		t.Logf("test %d: %f with NewFromFloat", i, flt)
 		var d Decimal
-		if !didPanic(func() { d = NewFromFloat(n) }) {
-			t.Fatalf("Expected panic when creating a Decimal from %v, got %v instead", n, d.String())
+		if !panicMatches(t, func() { d = NewFromFloat(flt) }, `can't convert .* to decimal`) {
+			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
 		}
+
+		t.Logf("test %d: %f with NewFromFloatWithExponent", i, flt)
+		if !panicMatches(t, func() { d = NewFromFloatWithExponent(flt, 0) }, `can't convert .* to decimal`) {
+			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
+		}
+
 	}
 }
 
 func TestNewFromString(t *testing.T) {
-	// add negatives
-	for f, s := range testTable {
-		if f > 0 {
-			testTable[-f] = "-" + s
-		}
-	}
-
-	for _, s := range testTable {
+	for _, s := range floatStringTests {
+		t.Logf("testing string parsing for %q", s)
 		d, err := NewFromString(s)
 		if err != nil {
 			t.Errorf("error while parsing %s", s)
 		} else if d.String() != s {
-			t.Errorf("expected %s, got %s (%s, %d)",
-				s, d.String(),
-				d.value.String(), d.exp)
+			t.Errorf("expected %s, got %s", s, d.String())
 		}
 	}
 }
 
-func TestNewFromStringErrs(t *testing.T) {
+func TestMustNewFromString(t *testing.T) {
+	for _, s := range floatStringTests {
+		t.Logf("testing string parsing for %q", s)
+		d := MustNewFromString(s)
+		if d.String() != s {
+			t.Errorf("expected %s, got %s", s, d.String())
+		}
+	}
+}
+
+func TestNewFromStringError(t *testing.T) {
 	tests := []string{
 		"",
 		"qwert",
@@ -99,12 +115,17 @@ func TestNewFromStringErrs(t *testing.T) {
 		"8.1.",
 	}
 
-	for _, s := range tests {
+	for i, s := range tests {
+		t.Logf("test %d: %q", i, s)
 		_, err := NewFromString(s)
-
 		if err == nil {
 			t.Errorf("error expected when parsing %s", s)
 		}
+
+		if !panicMatches(t, func() { MustNewFromString(s) }, "can't convert .* to decimal.*") {
+			t.Errorf("expected panic when parsing %s", s)
+		}
+
 	}
 }
 
@@ -122,33 +143,20 @@ func TestNewFromFloatWithExponent(t *testing.T) {
 		Inp{123.412345, -6}: "123.412345",
 		Inp{123.412345, -7}: "123.4123450",
 	}
-
-	// add negatives
-	for p, s := range tests {
-		if p.float > 0 {
-			tests[Inp{-p.float, p.exp}] = "-" + s
-		}
-	}
-
-	for input, s := range tests {
+	for input, expected := range tests {
+		t.Logf("testing NewFromFloatWithExponent: %v -> %q", input, expected)
 		d := NewFromFloatWithExponent(input.float, input.exp)
-		if d.String() != s {
-			t.Errorf("expected %s, got %s (%s, %d)",
-				s, d.String(),
-				d.value.String(), d.exp)
+		if d.String() != expected {
+			t.Errorf("expected %s, got %s", expected, d.String())
 		}
-	}
 
-	shouldPanicOn := []float64{
-		math.NaN(),
-		math.Inf(1),
-		math.Inf(-1),
-	}
-
-	for _, n := range shouldPanicOn {
-		var d Decimal
-		if !didPanic(func() { d = NewFromFloatWithExponent(n, 0) }) {
-			t.Fatalf("Expected panic when creating a Decimal from %v, got %v instead", n, d.String())
+		// Test negative values too.
+		input.float = -input.float
+		expected = fmt.Sprintf("-%s", expected)
+		t.Logf("testing NewFromFloatWithExponent: %v -> %q", input, expected)
+		d = NewFromFloatWithExponent(input.float, input.exp)
+		if d.String() != expected {
+			t.Errorf("expected %s, got %s", expected, d.String())
 		}
 	}
 }
@@ -180,7 +188,8 @@ func TestNewFromRat(t *testing.T) {
 		denom:  1,
 		expect: "-15",
 	}}
-	for _, test := range tests {
+	for i, test := range tests {
+		t.Logf("test %d: %s", i, test.about)
 		d := NewFromRat(big.NewRat(test.num, test.denom))
 		if d.String() != test.expect {
 			t.Errorf("expected %q, got %q", test.expect, d.String())
@@ -188,7 +197,7 @@ func TestNewFromRat(t *testing.T) {
 	}
 }
 
-func TestDecimal_rescale(t *testing.T) {
+func TestDecimalRescale(t *testing.T) {
 	type Inp struct {
 		int     int64
 		exp     int32
@@ -208,6 +217,7 @@ func TestDecimal_rescale(t *testing.T) {
 
 	// add negatives
 	for p, s := range tests {
+
 		if p.int > 0 {
 			negs := Res{
 				Before: "-" + s.Before,
@@ -218,12 +228,11 @@ func TestDecimal_rescale(t *testing.T) {
 	}
 
 	for input, s := range tests {
-		d := New(input.int, input.exp).rescale(input.rescale)
+		t.Logf("testing with decimal %d %d, rescaled to %d", input.int, input.exp, input.rescale)
 
+		d := New(input.int, input.exp).rescale(input.rescale)
 		if d.String() != s.Before {
-			t.Errorf("expected %s, got %s (%s, %d)",
-				s.Before, d.String(),
-				d.value.String(), d.exp)
+			t.Errorf("expected %s, got %s", s.Before, d.String())
 		}
 
 		// test StringScaled
@@ -260,6 +269,7 @@ func TestDecimalRound(t *testing.T) {
 	}
 
 	for input, s := range tests {
+		t.Logf("test rounding with decimal (%d, %d) rounded to %d", input.int, input.exp, input.rescale)
 		d := New(input.int, input.exp).Round(input.rescale)
 
 		if d.String() != s {
@@ -270,7 +280,7 @@ func TestDecimalRound(t *testing.T) {
 	}
 }
 
-func TestDecimal_Uninitialized(t *testing.T) {
+func TestUninitialized(t *testing.T) {
 	a := Decimal{}
 	b := Decimal{}
 
@@ -282,112 +292,103 @@ func TestDecimal_Uninitialized(t *testing.T) {
 		a.Mul(b),
 	}
 
-	for _, d := range decs {
+	for i, d := range decs {
+		t.Logf("test %d", i)
 		if d.String() != "0" {
 			t.Errorf("expected 0, got %s", d.String())
 		}
-	}
-
-	if a.Cmp(b) != 0 {
-		t.Errorf("a != b")
-	}
-	if a.Exponent() != 0 {
-		t.Errorf("a.Exponent() != 0")
+		if d.Cmp(b) != 0 {
+			t.Errorf("%s != %s", d.String(), b.String())
+		}
+		if d.Exponent() != 0 {
+			t.Errorf("a.Exponent() != 0")
+		}
 	}
 }
 
-func TestDecimal_Add(t *testing.T) {
+func TestAdd(t *testing.T) {
 	type Inp struct {
 		a string
 		b string
 	}
 
 	inputs := map[Inp]string{
-		Inp{"2", "3"}:                     "5",
+		Inp{"2", "3"}:     "5",
+		Inp{".1", ".1"}:   "0.2",
+		Inp{".1", "-.1"}:  "0.0",
+		Inp{"0", "1.001"}: "1.001",
+
 		Inp{"2454495034", "3451204593"}:   "5905699627",
 		Inp{"24544.95034", ".3451204593"}: "24545.2954604593",
-		Inp{".1", ".1"}:                   "0.2",
-		Inp{".1", "-.1"}:                  "0.0",
-		Inp{"0", "1.001"}:                 "1.001",
 	}
 
-	for inp, res := range inputs {
-		a, err := NewFromString(inp.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(inp.b)
-		if err != nil {
-			t.FailNow()
-		}
+	for input, expected := range inputs {
+		t.Logf("test %s + %s = %s", input.a, input.b, expected)
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Add(b)
-		if c.String() != res {
-			t.Errorf("expected %s, got %s", res, c.String())
+		if c.String() != expected {
+			t.Errorf("expected %s, got %s", expected, c.String())
 		}
 	}
 }
 
-func TestDecimal_Sub(t *testing.T) {
+func TestSub(t *testing.T) {
 	type Inp struct {
 		a string
 		b string
 	}
 
 	inputs := map[Inp]string{
-		Inp{"2", "3"}:                     "-1",
-		Inp{"12", "3"}:                    "9",
-		Inp{"-2", "9"}:                    "-11",
+		Inp{"2", "3"}:     "-1",
+		Inp{"12", "3"}:    "9",
+		Inp{"-2", "9"}:    "-11",
+		Inp{".1", "-.1"}:  "0.2",
+		Inp{".1", ".1"}:   "0.0",
+		Inp{"0", "1.001"}: "-1.001",
+		Inp{"1.001", "0"}: "1.001",
+		Inp{"2.3", ".3"}:  "2.0",
+
 		Inp{"2454495034", "3451204593"}:   "-996709559",
 		Inp{"24544.95034", ".3451204593"}: "24544.6052195407",
-		Inp{".1", "-.1"}:                  "0.2",
-		Inp{".1", ".1"}:                   "0.0",
-		Inp{"0", "1.001"}:                 "-1.001",
-		Inp{"1.001", "0"}:                 "1.001",
-		Inp{"2.3", ".3"}:                  "2.0",
 	}
 
-	for inp, res := range inputs {
-		a, err := NewFromString(inp.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(inp.b)
-		if err != nil {
-			t.FailNow()
-		}
+	for input, expected := range inputs {
+		t.Logf("test %s - %s = %s", input.a, input.b, expected)
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Sub(b)
-		if c.String() != res {
-			t.Errorf("expected %s, got %s", res, c.String())
+		if c.String() != expected {
+			t.Errorf("expected %s, got %s", expected, c.String())
 		}
 	}
 }
 
-func TestDecimal_Mul(t *testing.T) {
+func TestMul(t *testing.T) {
 	type Inp struct {
 		a string
 		b string
 	}
 
 	inputs := map[Inp]string{
-		Inp{"2", "3"}:                     "6",
+		Inp{"2", "3"}:     "6",
+		Inp{".1", ".1"}:   "0.01",
+		Inp{"0", "1.001"}: "0.000",
+
 		Inp{"2454495034", "3451204593"}:   "8470964534836491162",
 		Inp{"24544.95034", ".3451204593"}: "8470.964534836491162",
-		Inp{".1", ".1"}:                   "0.01",
-		Inp{"0", "1.001"}:                 "0.000",
 	}
 
-	for inp, res := range inputs {
-		a, err := NewFromString(inp.a)
-		if err != nil {
-			t.FailNow()
-		}
-		b, err := NewFromString(inp.b)
-		if err != nil {
-			t.FailNow()
-		}
+	for input, expected := range inputs {
+		t.Logf("test %s * %s = %s", input.a, input.b, expected)
+		a := MustNewFromString(input.a)
+		b := MustNewFromString(input.b)
+
 		c := a.Mul(b)
-		if c.String() != res {
-			t.Errorf("expected %s, got %s", res, c.String())
+		if c.String() != expected {
+			t.Errorf("expected %s, got %s", expected, c.String())
 		}
 	}
 
@@ -398,100 +399,94 @@ func TestDecimal_Mul(t *testing.T) {
 	}
 }
 
-func TestDecimal_Div(t *testing.T) {
+func TestDecimalDiv(t *testing.T) {
 	type Inp struct {
 		a string
 		b string
 	}
 
-	inputs := map[Inp]string{
-		Inp{"6", "3"}:                            "2",
-		Inp{"0", "1"}:                            "0",
-		Inp{"10", "2"}:                           "5",
-		Inp{"2.2", "1.1"}:                        "2",
-		Inp{"-2.2", "-1.1"}:                      "2",
-		Inp{"12.88", "5.6"}:                      "2.3",
-		Inp{"1023427554493", "43432632"}:         "23563.5628642767953828", // rounded
-		Inp{"1", "434324545566634"}:              "0.0000000000000023",
-		Inp{"1", "3"}:                            "0.3333333333333333",
-		Inp{"2", "3"}:                            "0.6666666666666667", // rounded
-		Inp{"10000", "3"}:                        "3333.3333333333333333",
+	tests := map[Inp]string{
+		Inp{"6", "3"}:       "2",
+		Inp{"0", "1"}:       "0",
+		Inp{"10", "2"}:      "5",
+		Inp{"2.2", "1.1"}:   "2",
+		Inp{"-2.2", "-1.1"}: "2",
+		Inp{"12.88", "5.6"}: "2.3",
+		Inp{"1", "3"}:       "0.3333333333333333",
+		Inp{"2", "3"}:       "0.6666666666666667", // rounded
+		Inp{"10000", "3"}:   "3333.3333333333333333",
+
 		Inp{"10234274355545544493", "-3"}:        "-3411424785181848164.3333333333333333",
 		Inp{"-4612301402398.4753343454", "23.5"}: "-196268144782.9138440146978723",
+		Inp{"1023427554493", "43432632"}:         "23563.5628642767953828", // rounded
+		Inp{"1", "434324545566634"}:              "0.0000000000000023",
 	}
 
-	for inp, expected := range inputs {
-		num, err := NewFromString(inp.a)
-		if err != nil {
-			t.FailNow()
-		}
-		denom, err := NewFromString(inp.b)
-		if err != nil {
-			t.FailNow()
-		}
+	for input, expected := range tests {
+		t.Logf("test %s / %s = %s", input.a, input.b, expected)
+		num := MustNewFromString(input.a)
+		denom := MustNewFromString(input.b)
+
 		got := num.Div(denom)
 		if got.String() != expected {
-			t.Errorf("expected %s when dividing %v by %v, got %v",
-				expected, num, denom, got)
+			t.Errorf("expected %s, got %v", expected, got)
 		}
 	}
+}
 
-	type Inp2 struct {
-		n    int64
-		exp  int32
-		n2   int64
-		exp2 int32
+func TestDivWithLiterals(t *testing.T) {
+	// Test code path where exp > 0.
+	type Inp struct {
+		a    int64
+		expa int32
+		b    int64
+		expb int32
+	}
+	tests := map[Inp]string{
+		Inp{124, 10, 3, 1}: "41333333333.3333333333333333",
+		Inp{124, 10, 3, 0}: "413333333333.3333333333333333",
+		Inp{124, 10, 6, 1}: "20666666666.6666666666666667",
+		Inp{124, 10, 6, 0}: "206666666666.6666666666666667",
+		Inp{10, 10, 10, 1}: "1000000000",
 	}
 
-	// test code path where exp > 0
-	inputs2 := map[Inp2]string{
-		Inp2{124, 10, 3, 1}: "41333333333.3333333333333333",
-		Inp2{124, 10, 3, 0}: "413333333333.3333333333333333",
-		Inp2{124, 10, 6, 1}: "20666666666.6666666666666667",
-		Inp2{124, 10, 6, 0}: "206666666666.6666666666666667",
-		Inp2{10, 10, 10, 1}: "1000000000",
-	}
-
-	for inp, expectedAbs := range inputs2 {
+	for input, expectedAbs := range tests {
 		for i := -1; i <= 1; i += 2 {
 			for j := -1; j <= 1; j += 2 {
-				n := inp.n * int64(i)
-				n2 := inp.n2 * int64(j)
-				num := New(n, inp.exp)
-				denom := New(n2, inp.exp2)
+				num := New(input.a*int64(i), input.expa)
+				denom := New(input.b*int64(j), input.expb)
 				expected := expectedAbs
 				if i != j {
 					expected = "-" + expectedAbs
 				}
+				t.Logf("test %s / %s = %s", num.String(), denom.String(), expected)
+
 				got := num.Div(denom)
 				if got.String() != expected {
-					t.Errorf("expected %s when dividing %v by %v, got %v",
-						expected, num, denom, got)
+					t.Errorf("expected %s, got %v", expected, got)
 				}
 			}
 		}
 	}
 }
 
-func TestDecimal_Overflow(t *testing.T) {
-	if !didPanic(func() { New(1, math.MinInt32).Mul(New(1, math.MinInt32)) }) {
+func TestOverflow(t *testing.T) {
+	if !panicMatches(t, func() { New(1, math.MinInt32).Mul(New(1, math.MinInt32)) }, "exponent .* overflows an int32!") {
 		t.Fatalf("should have gotten an overflow panic")
 	}
-	if !didPanic(func() { New(1, math.MaxInt32).Mul(New(1, math.MaxInt32)) }) {
+	if !panicMatches(t, func() { New(1, math.MaxInt32).Mul(New(1, math.MaxInt32)) }, "exponent .* overflows an int32!") {
 		t.Fatalf("should have gotten an overflow panic")
 	}
 }
 
-// old tests after this line
-
-func TestDecimal_Scale(t *testing.T) {
+func TestExponent(t *testing.T) {
 	a := New(1234, -3)
 	if a.Exponent() != -3 {
-		t.Errorf("error")
+		t.Errorf("expected exponent to be -3, got %d", a.Exponent())
 	}
 }
 
-func TestDecimal_Abs1(t *testing.T) {
+func TestAbs(t *testing.T) {
 	a := New(-1234, -4)
 	b := New(1234, -4)
 
@@ -501,49 +496,57 @@ func TestDecimal_Abs1(t *testing.T) {
 	}
 }
 
-func TestDecimal_Abs2(t *testing.T) {
-	a := New(-1234, -4)
-	b := New(1234, -4)
+func TestCmp(t *testing.T) {
+	tests := []struct {
+		a        Decimal
+		b        Decimal
+		expected int
+	}{{
+		a:        New(123, 3),
+		b:        New(-1234, 2),
+		expected: 1,
+	}, {
+		a:        New(123, 3),
+		b:        New(1234, 2),
+		expected: -1,
+	}, {
+		a:        New(1230, 2),
+		b:        New(123, 3),
+		expected: 0,
+	}}
 
-	c := b.Abs()
-	if c.Cmp(a) == 0 {
-		t.Errorf("error")
+	for i, test := range tests {
+		t.Logf("test %d: %s vs %s", i, test.a.String(), test.b.String())
+		r := test.a.Cmp(test.b)
+		if r != test.expected {
+			t.Errorf("comparing %s and %s expected %d, got %d", test.a, test.b, test.expected, r)
+		}
 	}
 }
 
-func TestDecimal_Cmp1(t *testing.T) {
-	a := New(123, 3)
-	b := New(-1234, 2)
-
-	if a.Cmp(b) != 1 {
-		t.Errorf("Error")
-	}
-}
-
-func TestDecimal_Cmp2(t *testing.T) {
-	a := New(123, 3)
-	b := New(1234, 2)
-
-	if a.Cmp(b) != -1 {
-		t.Errorf("Error")
-	}
-}
-
-func didPanic(f func()) bool {
-	ret := false
-	func() {
-
-		defer func() {
-			if message := recover(); message != nil {
-				ret = true
+// panicMatches checks if the provided function panics.
+func panicMatches(t *testing.T, f func(), exp string) (ret bool) {
+	ret = false
+	r := regexp.MustCompile("^" + exp + "$")
+	defer func() {
+		if message := recover(); message != nil {
+			switch message.(type) {
+			case error:
+				if ret = r.MatchString((message.(error)).Error()); !ret {
+					t.Logf("%q did not match %q", (message.(error)).Error(), exp)
+				}
+			case string:
+				if ret = r.MatchString((message.(string))); !ret {
+					t.Logf("%q did not match %q", message.(string), exp)
+				}
+			default:
+				ret = false
 			}
-		}()
-
-		// call the target function
-		f()
-
+		}
 	}()
 
-	return ret
+	// call the target function
+	f()
 
+	return false
 }
