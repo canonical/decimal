@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"regexp"
 	"testing"
 )
 
-var tests = map[float64]string{
+var floatStringTests = map[float64]string{
 	3.141592653589793:   "3.141592653589793",
 	3:                   "3",
 	1234567890123456:    "1234567890123456",
@@ -32,7 +33,7 @@ var tests = map[float64]string{
 
 func TestNewFromFloat(t *testing.T) {
 
-	for flt, expected := range tests {
+	for flt, expected := range floatStringTests {
 		t.Logf("running test: %f -> %s", flt, expected)
 		d := NewFromFloat(flt)
 		if d.String() != expected {
@@ -61,20 +62,20 @@ func TestNewFromFloatPanics(t *testing.T) {
 	for i, flt := range shouldPanicOn {
 		t.Logf("test %d: %f with NewFromFloat", i, flt)
 		var d Decimal
-		if !didPanic(func() { d = NewFromFloat(flt) }) {
+		if !panicMatches(t, func() { d = NewFromFloat(flt) }, `can't convert .* to decimal`) {
 			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
 		}
 
 		t.Logf("test %d: %f with NewFromFloatWithExponent", i, flt)
-		if !didPanic(func() { d = NewFromFloatWithExponent(flt, 0) }) {
-			t.Fatalf("Expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
+		if !panicMatches(t, func() { d = NewFromFloatWithExponent(flt, 0) }, `can't convert .* to decimal`) {
+			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
 		}
 
 	}
 }
 
 func TestNewFromString(t *testing.T) {
-	for _, s := range tests {
+	for _, s := range floatStringTests {
 		t.Logf("testing string parsing for %q", s)
 		d, err := NewFromString(s)
 		if err != nil {
@@ -86,7 +87,7 @@ func TestNewFromString(t *testing.T) {
 }
 
 func TestMustNewFromString(t *testing.T) {
-	for _, s := range tests {
+	for _, s := range floatStringTests {
 		t.Logf("testing string parsing for %q", s)
 		d := MustNewFromString(s)
 		if d.String() != s {
@@ -121,7 +122,7 @@ func TestNewFromStringError(t *testing.T) {
 			t.Errorf("error expected when parsing %s", s)
 		}
 
-		if !didPanic(func() { MustNewFromString(s) }) {
+		if !panicMatches(t, func() { MustNewFromString(s) }, "can't convert .* to decimal.*") {
 			t.Errorf("expected panic when parsing %s", s)
 		}
 
@@ -470,10 +471,10 @@ func TestDivWithLiterals(t *testing.T) {
 }
 
 func TestOverflow(t *testing.T) {
-	if !didPanic(func() { New(1, math.MinInt32).Mul(New(1, math.MinInt32)) }) {
+	if !panicMatches(t, func() { New(1, math.MinInt32).Mul(New(1, math.MinInt32)) }, "exponent .* overflows an int32!") {
 		t.Fatalf("should have gotten an overflow panic")
 	}
-	if !didPanic(func() { New(1, math.MaxInt32).Mul(New(1, math.MaxInt32)) }) {
+	if !panicMatches(t, func() { New(1, math.MaxInt32).Mul(New(1, math.MaxInt32)) }, "exponent .* overflows an int32!") {
 		t.Fatalf("should have gotten an overflow panic")
 	}
 }
@@ -523,11 +524,24 @@ func TestCmp(t *testing.T) {
 	}
 }
 
-// didPanic checks if the provided function panics.
-func didPanic(f func()) (ret bool) {
+// panicMatches checks if the provided function panics.
+func panicMatches(t *testing.T, f func(), exp string) (ret bool) {
+	ret = false
+	r := regexp.MustCompile("^" + exp + "$")
 	defer func() {
 		if message := recover(); message != nil {
-			ret = true
+			switch message.(type) {
+			case error:
+				if ret = r.MatchString((message.(error)).Error()); !ret {
+					t.Logf("%q did not match %q", (message.(error)).Error(), exp)
+				}
+			case string:
+				if ret = r.MatchString((message.(string))); !ret {
+					t.Logf("%q did not match %q", message.(string), exp)
+				}
+			default:
+				ret = false
+			}
 		}
 	}()
 
