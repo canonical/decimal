@@ -359,9 +359,9 @@ func (a Decimal) Div(b Decimal) Decimal {
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
-// -1 if d <  d2
-//  0 if d == d2
-// +1 if d >  d2
+//     -1 if d <  d2
+//      0 if d == d2
+//     +1 if d >  d2
 func (d Decimal) Cmp(d2 Decimal) int {
 	baseExp := min(d.exp, d2.exp)
 	rd := d.rescale(baseExp)
