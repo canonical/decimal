@@ -26,25 +26,42 @@ import (
 	"strings"
 )
 
-// DivisionPrecision is the number of decimal places in the result when it
-// doesn't divide exactly.
+// Context stores the explicitly set precision for decimal number calculations.
 //
-// Example:
-//     d1 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
-//     d1.String() // output: "0.6666666666666667"
-//     d2 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(30000)
-//     d2.String() // output: "0.0000666666666667"
-//     d3 := decimal.NewFromFloat(20000).Div(decimal.NewFromFloat(3)
-//     d3.String() // output: "6666.6666666666666667"
-//     decimal.DivisionPrecision = 3
-//     d4 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
-//     d4.String() // output: "0.667"
-var DivisionPrecision = 16
+// Each Decimal created using a context retains that context's information:
+//
+//     c := NewContext(4) // context with precision to four decimal places.
+//     d := c.New(15, -1) // 1.5
+//     d = d.Mul(d)
+//
+type Context struct {
+	precision int32
+}
+
+// Precision returns the precision of the context.
+func (c Context) Precision() int32 {
+	return c.precision
+}
+
+// NewContext creates a new context with the specified precision.
+func NewContext(precision int32) Context {
+	return Context{
+		precision: precision,
+	}
+}
+
+const defaultPrecision = 16
+
+var defaultContext = NewContext(defaultPrecision)
+
+// Monetary is a decimal context for financial calculations,
+// maintaining precision to two decimal places.
+var Monetary = NewContext(2)
+
+// Zero constant, to make computations faster.
+var Zero = New(0, 1)
 
 var (
-	// Zero constant, to make computations faster.
-	Zero = New(0, 1)
-
 	zeroInt = big.NewInt(0)
 	tenInt  = big.NewInt(10)
 	oneInt  = big.NewInt(1)
@@ -53,6 +70,8 @@ var (
 // Decimal represents a fixed-point decimal. It is immutable.
 // number = value * 10 ^ exp
 type Decimal struct {
+	Context
+
 	value *big.Int
 
 	// NOTE(vadim): this must be an int32, because we cast it to float64 during
@@ -63,12 +82,29 @@ type Decimal struct {
 	exp int32
 }
 
+// Adapt adapts the provided decimal number to the context.
+// If the decimal number has a higher accuracy than that of the context, it will
+// be rounded to the accuracy of the context.
+func (c Context) Adapt(d Decimal) Decimal {
+	r := d
+	if d.exp < -c.precision {
+		r = d.Round(-c.precision)
+	}
+	r.Context = c
+	return r
+}
+
 // New returns a new fixed-point decimal, value * 10 ^ exp.
-func New(value int64, exp int32) Decimal {
-	return Decimal{
+func (c Context) New(value int64, exp int32) Decimal {
+	return c.Adapt(Decimal{
 		value: big.NewInt(value),
 		exp:   exp,
-	}
+	})
+}
+
+// New returns a new fixed-point decimal, value * 10 ^ exp. Using the default context.
+func New(value int64, exp int32) Decimal {
+	return defaultContext.New(value, exp)
 }
 
 // NewFromString returns a new Decimal from a string representation.
@@ -76,7 +112,7 @@ func New(value int64, exp int32) Decimal {
 // Example:
 //     d, err := NewFromString("-123.45")
 //     d2, err := NewFromString(".0001")
-func NewFromString(value string) (Decimal, error) {
+func (c Context) NewFromString(value string) (Decimal, error) {
 	var intString string
 	var exp int32
 	parts := strings.Split(value, ".")
@@ -103,10 +139,16 @@ func NewFromString(value string) (Decimal, error) {
 		return Decimal{}, fmt.Errorf("can't convert %s to decimal", value)
 	}
 
-	return Decimal{
-		value: dValue,
-		exp:   exp,
-	}, nil
+	return c.Adapt(Decimal{
+		Context: c,
+		value:   dValue,
+		exp:     exp,
+	}), nil
+}
+
+// NewFromString parses a string representation into a decimal using the default context.
+func NewFromString(value string) (Decimal, error) {
+	return defaultContext.NewFromString(value)
 }
 
 // MustNewFromString parses the provided string representation into a Decimal or panics if an error occurs.
@@ -114,26 +156,31 @@ func NewFromString(value string) (Decimal, error) {
 // Example:
 //     d := MustNewFromString("-123.45")
 //     d2 := MustNewFromString(".0001")
-func MustNewFromString(value string) Decimal {
-	d, err := NewFromString(value)
+func (c Context) MustNewFromString(value string) Decimal {
+	d, err := c.NewFromString(value)
 	if err != nil {
 		panic(err)
 	}
 	return d
 }
 
+// MustNewFromString parses the string representation into a decimal using the default representation or panics.
+func MustNewFromString(value string) Decimal {
+	return defaultContext.MustNewFromString(value)
+}
+
 // NewFromRat returns a new Decimal from a big.Rat.
 //
 // Example:
 //    d := NewFromRat(big.NewRat(10, 5))
-func NewFromRat(value *big.Rat) Decimal {
+func (c Context) NewFromRat(value *big.Rat) Decimal {
 	var str string
 	if value.IsInt() {
 		str = value.Num().String()
 	} else {
-		str = value.FloatString(DivisionPrecision)
+		str = value.FloatString(int(c.precision))
 	}
-	d, err := NewFromString(str)
+	d, err := c.NewFromString(str)
 	if err != nil {
 		// Panic here, because we just failed to parse a string
 		// we constructed.
@@ -142,48 +189,51 @@ func NewFromRat(value *big.Rat) Decimal {
 	return d
 }
 
+// NewFromRate returns a new decimal from a big.Rat using the default context.
+func NewFromRat(value *big.Rat) Decimal {
+	return defaultContext.NewFromRat(value)
+}
+
 // NewFromFloat converts a float64 to Decimal.
-// NOTE: this will panic on NaN, +/-inf
+// NOTE: this will return an error on NaN, +/-inf.
 //
 // Example:
 //     NewFromFloat(123.45678901234567).String() // output: "123.4567890123456"
 //     NewFromFloat(.00000000000000001).String() // output: "0.00000000000000001"
-func NewFromFloat(value float64) Decimal {
+func (c Context) NewFromFloat(value float64) (Decimal, error) {
 	floor := math.Floor(value)
 
 	// fast path, where float is an int
 	if floor == value && !math.IsInf(value, 0) {
-		return New(int64(value), 0)
+		return New(int64(value), 0), nil
 	}
 
 	// slow path: float is a decimal
 	// HACK(vadim): do this the slow hacky way for now because the logic to
 	// convert a base-2 float to base-10 properly is not trivial
 	str := strconv.FormatFloat(value, 'f', -1, 64)
-	dec, err := NewFromString(str)
+	return c.NewFromString(str)
+}
+
+// NewFromFloat converts a float64 to Decimal using the default context.
+func NewFromFloat(value float64) (Decimal, error) {
+	return defaultContext.NewFromFloat(value)
+}
+
+// MustNewFromFloat creates a decimal number equivalent to the provided float.
+// It will panic on error.
+func (c Context) MustNewFromFloat(value float64) Decimal {
+	d, err := c.NewFromFloat(value)
 	if err != nil {
 		panic(err)
 	}
-	return dec
+	return d
 }
 
-// NewFromFloatWithExponent converts a float64 to Decimal, with an arbitrary
-// number of fractional digits.
-//
-// Example:
-//     NewFromFloatWithExponent(123.456, -2).String() // output: "123.46"
-func NewFromFloatWithExponent(value float64, exp int32) Decimal {
-	mul := math.Pow(10, -float64(exp))
-	floatValue := value * mul
-	if math.IsNaN(floatValue) || math.IsInf(floatValue, 0) {
-		panic(fmt.Sprintf("can't convert %v to decimal", floatValue))
-	}
-	dValue := big.NewInt(round(floatValue))
-
-	return Decimal{
-		value: dValue,
-		exp:   exp,
-	}
+// MustNewFromFloat creates a decimal number equivalent to the provided float or
+// panics. It uses the default context.
+func MustNewFromFloat(value float64) Decimal {
+	return defaultContext.MustNewFromFloat(value)
 }
 
 // rescale returns a rescaled version of the decimal. Returned
@@ -224,7 +274,7 @@ func (d Decimal) rescale(exp int32) Decimal {
 
 // Round returns a rounded decimal number.
 //
-// Rounding can only be performed with an exponent larger than the
+// Rounidng can only be performed with an exponent larger than the
 // exponent of the number. If the exponent is smaller, the number is
 // returned unchanged.
 //
@@ -245,8 +295,10 @@ func (d Decimal) Round(exp int32) Decimal {
 		return d
 	}
 	d.ensureInitialized()
-
-	rounded := d.Add(New(int64(d.value.Sign()*5), exp-1))
+	rounding := Decimal{
+		value: big.NewInt(int64(d.value.Sign()) * 5),
+		exp:   exp - 1}
+	rounded := d.Add(rounding)
 	return rounded.rescale(exp)
 }
 
@@ -312,7 +364,7 @@ func (a Decimal) Div(b Decimal) Decimal {
 		return Zero
 	}
 
-	precision := int32(DivisionPrecision)
+	precision := int32(a.precision)
 
 	// Working representation of the numerator.
 	num := big.NewInt(0).Set(a.value)
