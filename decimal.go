@@ -318,7 +318,11 @@ func (a Decimal) Div(b Decimal) Decimal {
 	num := big.NewInt(0).Set(a.value)
 
 	// Power of 10 needed for division with required precision.
-	pwr := precision + 1 + (a.exp - b.exp)
+	pwrFloat := float64(precision) + 1 + float64(a.exp) - float64(b.exp)
+	if math.IsNaN(pwrFloat) || math.IsInf(pwrFloat, 0) {
+		panic(fmt.Sprintf("can't convert %v to decimal", pwrFloat))
+	}
+	pwr := round(pwrFloat)
 	exp := big.NewInt(0).Exp(tenInt, big.NewInt(int64(pwr)), nil)
 
 	num.Mul(num, exp)
