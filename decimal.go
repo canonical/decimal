@@ -305,32 +305,63 @@ func (d Decimal) Mul(d2 Decimal) Decimal {
 	}
 }
 
-// Div returns d / d2. If it doesn't divide exactly, the result will have
+// Div returns a / b. If it doesn't divide exactly, the result will have
 // DivisionPrecision digits after the decimal point.
-func (d Decimal) Div(d2 Decimal) Decimal {
-	// NOTE(vadim): division is hard, use Rat to do it
-	z := big.NewInt(0)
-	rem := big.NewInt(0)
-
-	z.QuoRem(d.value, d2.value, rem)
-	if rem.Cmp(zeroInt) == 0 {
-		return Decimal{
-			value: z,
-			exp:   d.exp - d2.exp,
-		}
+func (a Decimal) Div(b Decimal) Decimal {
+	if a.value.Cmp(zeroInt) == 0 {
+		return Zero
 	}
 
-	quoRat := big.NewRat(0, 1).Quo(d.Rat(), d2.Rat())
+	precision := int32(DivisionPrecision)
 
-	// HACK(vadim): converting from Rat to Decimal inefficiently for now
-	ret := NewFromRat(quoRat)
-	return ret
+	// Working representation of the numerator.
+	num := big.NewInt(0).Set(a.value)
+
+	// Power of 10 needed for division with required precision.
+	pwrFloat := float64(precision) + 1 + float64(a.exp) - float64(b.exp)
+	if math.IsNaN(pwrFloat) || math.IsInf(pwrFloat, 0) {
+		panic(fmt.Sprintf("can't convert %v to decimal", pwrFloat))
+	}
+	pwr := round(pwrFloat)
+	exp := big.NewInt(0).Exp(tenInt, big.NewInt(int64(pwr)), nil)
+
+	num.Mul(num, exp)
+
+	// Divide.
+	num = num.Div(num, b.value)
+
+	// Check remainder.
+	rem := big.NewInt(0)
+	num, rem = num.DivMod(num, tenInt, rem)
+
+	// Round up.
+	if rem.Int64() >= 5 {
+		num.Add(num, big.NewInt(1))
+	}
+
+	// Remove insignificant decimal places.
+	// TODO: this will be simplified once decimal context is introduced.
+	m := big.NewInt(0)
+	temp := big.NewInt(0).Set(num)
+	var expShift int32
+	for m.Cmp(zeroInt) == 0 {
+		expShift++
+		temp.DivMod(temp, tenInt, m)
+	}
+	expShift--
+	expScale := big.NewInt(0).Exp(tenInt, big.NewInt(int64(expShift)), nil)
+	num.Div(num, expScale)
+
+	return Decimal{
+		value: num,
+		exp:   -(precision - expShift),
+	}
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
-//     -1 if d <  d2
-//      0 if d == d2
-//     +1 if d >  d2
+// -1 if d <  d2
+//  0 if d == d2
+// +1 if d >  d2
 func (d Decimal) Cmp(d2 Decimal) int {
 	baseExp := min(d.exp, d2.exp)
 	rd := d.rescale(baseExp)
