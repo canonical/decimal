@@ -26,6 +26,15 @@ func TestSumMaintainsContext(t *testing.T) {
 	}
 }
 
+func TestNegativeContext(t *testing.T) {
+	ctx := decimal.NewContext(-2)
+
+	a := ctx.MustNewFromString("1234.056")
+	if a.String() != "1200" {
+		t.Fatalf("expected '1200', got %d", a.String())
+	}
+}
+
 func TestNew(t *testing.T) {
 	tests := []struct {
 		value    int64

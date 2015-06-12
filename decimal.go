@@ -79,7 +79,9 @@ func (d Decimal) String() string {
 
 	if d.exp >= 0 {
 		intPart = d.rescale(0).value.String()
-		fractionalPart = strings.Repeat("0", int(d.precision))
+		if d.precision > 0 {
+			fractionalPart = strings.Repeat("0", int(d.precision))
+		}
 	} else {
 		abs := new(big.Int).Abs(d.value)
 		str := abs.String()
