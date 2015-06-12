@@ -72,18 +72,6 @@ var stringTests = map[string]string{
 	"0.1000000000000008":  "0.100000",
 }
 
-func TestNewFromString(t *testing.T) {
-	for src, expect := range stringTests {
-		t.Logf("testing string parsing for %q", src)
-		d, err := testCtx.NewFromString(src)
-		if err != nil {
-			t.Errorf("error while parsing %s", src)
-		} else if d.String() != expect {
-			t.Errorf("expected %s, got %s", expect, d.String())
-		}
-	}
-}
-
 var stringErrorTests = []string{
 	"",
 	"qwert",
@@ -299,6 +287,53 @@ func TestNewFromFloat(t *testing.T) {
 		}
 		if d.Context != testCtx {
 			t.Errorf("unknown context value")
+		}
+	}
+}
+
+func TestNewFromString(t *testing.T) {
+	for src, expect := range stringTests {
+		t.Logf("testing string parsing for %q", src)
+		d, err := testCtx.NewFromString(src)
+		if err != nil {
+			t.Errorf("error while parsing %s", src)
+		} else if d.String() != expect {
+			t.Errorf("expected %s, got %s", expect, d.String())
+		}
+	}
+}
+
+var floatStringTestsLong = map[float64]string{
+	3.141592653589793:   "3.1415926535897930",
+	3:                   "3.0000000000000000",
+	1234567890123456:    "1234567890123456.0000000000000000",
+	1234567890123456000: "1234567890123456000.0000000000000000",
+	1234.567890123456:   "1234.5678901234560000",
+	.1234567890123456:   "0.1234567890123456",
+	0:                   "0.0000000000000000",
+	.1111111111111110:   "0.1111111111111110",
+	.1111111111111111:   "0.1111111111111111",
+	.1111111111111119:   "0.1111111111111119",
+	.0000000000000001:   "0.0000000000000001",
+	.0000000000000002:   "0.0000000000000002",
+	.0000000000000003:   "0.0000000000000003",
+	.0000000000000005:   "0.0000000000000005",
+	.00000000000000008:  "0.0000000000000001",
+	.1000000000000001:   "0.1000000000000001",
+	.1000000000000002:   "0.1000000000000002",
+	.1000000000000003:   "0.1000000000000003",
+	.1000000000000005:   "0.1000000000000005",
+	.1000000000000008:   "0.1000000000000008",
+}
+
+func TestNewFromFloatDefaultContext(t *testing.T) {
+	for src, expect := range floatStringTestsLong {
+		t.Logf("testing string parsing for %q", src)
+		d, err := decimal.DefaultContext.NewFromFloat(src)
+		if err != nil {
+			t.Errorf("error while parsing %s", src)
+		} else if d.String() != expect {
+			t.Errorf("expected %s, got %s", expect, d.String())
 		}
 	}
 }
