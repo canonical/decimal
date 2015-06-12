@@ -26,7 +26,7 @@ import (
 )
 
 // Zero constant.
-var Zero = Default.New(0, 1)
+var Zero = DefaultContext.New(0, 1)
 
 var (
 	zeroInt = big.NewInt(0)
@@ -54,17 +54,6 @@ type Decimal struct {
 // Rounding can only be performed with an exponent larger than the
 // exponent of the number. If the exponent is smaller, the number is
 // returned unchanged.
-//
-// Example:
-//     d := New(1234545, -3)
-//     d.Round(-4) returns 1234.545
-//     d.Round(-2) returns 1234.55
-//     d.Round(-1) returns 1234.5
-//     d.Round(0) returns 1235
-//     d.Round(1) returns 1230
-//
-//     d := New(-1235, -3)
-//     d.Round(-2) returns 1.24
 func (d Decimal) Round(exp int32) Decimal {
 	if exp <= d.exp {
 		return d
@@ -83,13 +72,6 @@ func (d Decimal) Round(exp int32) Decimal {
 
 // String returns the string representation of the decimal
 // with the fixed point.
-//
-// Example:
-//     d := New(-12345, -3)
-//     println(d.String())
-//
-// Output:
-//     -12.345
 func (d Decimal) String() string {
 	d.ensureInitialized()
 
@@ -134,19 +116,6 @@ func (d Decimal) String() string {
 // decimal may be less precise if the given exponent is bigger
 // than the initial exponent of the Decimal.
 // NOTE: this will truncate, NOT round
-//
-// Example:
-// 	d := New(12345, -4)
-//	d2 := d.rescale(-1)
-//	d3 := d2.rescale(-4)
-//	println(d1)
-//	println(d2)
-//	println(d3)
-//
-// Output:
-//	1.2345
-//	1.2
-//	1.2000
 func (d Decimal) rescale(exp int32) Decimal {
 	d.ensureInitialized()
 	// NOTE(vadim): must convert exps to float64 before - to prevent overflow
@@ -325,9 +294,6 @@ func (d Decimal) StringScaled(exp int32) string {
 
 // Truncate truncates off digits from the number, without rounding.
 // NOTE: precision is the last digit that will not be truncated (should be >= 0)
-//
-// Example:
-//     decimal.NewFromString("123.456").Truncate(2).String() // "123.45"
 func (d Decimal) Truncate(precision int32) Decimal {
 	d.ensureInitialized()
 	if precision >= 0 && -precision > d.exp {
@@ -391,6 +357,37 @@ func (d Decimal) MarshalText() (text []byte, err error) {
 // Value implements the driver.Valuer interface for database serialization.
 func (d Decimal) Value() (driver.Value, error) {
 	return d.String(), nil
+}
+
+// New returns a new fixed-point decimal, value * 10 ^ exp. Using the default context.
+func New(value int64, exp int32) Decimal {
+	return DefaultContext.New(value, exp)
+}
+
+// NewFromString parses a string representation into a decimal using the default context.
+func NewFromString(value string) (Decimal, error) {
+	return DefaultContext.NewFromString(value)
+}
+
+// MustNewFromString parses the string representation into a decimal using the default representation or panics.
+func MustNewFromString(value string) Decimal {
+	return DefaultContext.MustNewFromString(value)
+}
+
+// NewFromRat returns a new decimal from a big.Rat using the default context.
+func NewFromRat(value *big.Rat) Decimal {
+	return DefaultContext.NewFromRat(value)
+}
+
+// NewFromFloat converts a float64 to Decimal using the default context.
+func NewFromFloat(value float64) (Decimal, error) {
+	return DefaultContext.NewFromFloat(value)
+}
+
+// MustNewFromFloat creates a decimal number equivalent to the provided float or
+// panics. It uses the default context.
+func MustNewFromFloat(value float64) Decimal {
+	return DefaultContext.MustNewFromFloat(value)
 }
 
 func round(n float64) int64 {

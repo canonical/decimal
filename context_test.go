@@ -167,7 +167,7 @@ func panicMatches(t *testing.T, f func(), exp string) (ret bool) {
 	return false
 }
 
-func TestMonetaryContextFromString(t *testing.T) {
+func TestMonetaryContextContextFromString(t *testing.T) {
 	tests := map[string]string{
 		"3.141592653589793":   "3.14",
 		"3":                   "3.00",
@@ -184,7 +184,7 @@ func TestMonetaryContextFromString(t *testing.T) {
 
 	for src, expect := range tests {
 		t.Logf("testing string parsing for %q", src)
-		d, err := decimal.Monetary.NewFromString(src)
+		d, err := decimal.MonetaryContext.NewFromString(src)
 		if err != nil {
 			t.Errorf("error while parsing %s: %v", src, err)
 		} else if d.String() != expect {
@@ -193,15 +193,15 @@ func TestMonetaryContextFromString(t *testing.T) {
 	}
 }
 
-func TestMonetaryContextFromStringErrors(t *testing.T) {
+func TestMonetaryContextContextFromStringErrors(t *testing.T) {
 	for i, s := range stringErrorTests {
 		t.Logf("test %d: %q", i, s)
-		_, err := decimal.Monetary.NewFromString(s)
+		_, err := decimal.MonetaryContext.NewFromString(s)
 		if !errorMatches(t, err, "can't convert .* to decimal.*") {
 			t.Errorf("error expected when parsing %s", s)
 		}
 
-		if !panicMatches(t, func() { decimal.Monetary.MustNewFromString(s) }, "can't convert .* to decimal.*") {
+		if !panicMatches(t, func() { decimal.MonetaryContext.MustNewFromString(s) }, "can't convert .* to decimal.*") {
 			t.Errorf("expected panic when parsing %s", s)
 		}
 

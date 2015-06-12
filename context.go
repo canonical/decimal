@@ -46,12 +46,12 @@ func (c Context) Adapt(d Decimal) Decimal {
 
 const defaultPrecision = 16
 
-// Default is the decimal context with the default precision of 16 decimal places.
-var Default = NewContext(defaultPrecision)
+// DefaultContext is the decimal context with the default precision of 16 decimal places.
+var DefaultContext = NewContext(defaultPrecision)
 
 // Monetary is a decimal context for financial calculations,
 // maintaining precision to two decimal places.
-var Monetary = NewContext(2)
+var MonetaryContext = NewContext(2)
 
 // Zero returns the zero decimal value using the specified context.
 func (c Context) Zero() Decimal {
@@ -66,26 +66,18 @@ func (c Context) New(value int64, exp int32) Decimal {
 	})
 }
 
-// New returns a new fixed-point decimal, value * 10 ^ exp. Using the default context.
-func New(value int64, exp int32) Decimal {
-	return Default.New(value, exp)
-}
-
 // NewFromString returns a new Decimal from a string representation.
-//
-// Example:
-//     d, err := NewFromString("-123.45")
-//     d2, err := NewFromString(".0001")
 func (c Context) NewFromString(value string) (Decimal, error) {
 	var intString string
 	var exp int32
 	parts := strings.Split(value, ".")
-	if len(parts) == 1 {
+	switch len(parts) {
+	case 1:
 		// There is no decimal point, we can just parse the original string as
 		// an int.
 		intString = value
 		exp = 0
-	} else if len(parts) == 2 {
+	case 2:
 		intString = parts[0] + parts[1]
 		expInt := -len(parts[1])
 		if expInt < math.MinInt32 {
@@ -93,7 +85,7 @@ func (c Context) NewFromString(value string) (Decimal, error) {
 			return Decimal{}, fmt.Errorf("can't convert %s to decimal: fractional part too long", value)
 		}
 		exp = int32(expInt)
-	} else {
+	default:
 		return Decimal{}, fmt.Errorf("can't convert %s to decimal: too many .s", value)
 	}
 
@@ -109,16 +101,7 @@ func (c Context) NewFromString(value string) (Decimal, error) {
 	}), nil
 }
 
-// NewFromString parses a string representation into a decimal using the default context.
-func NewFromString(value string) (Decimal, error) {
-	return Default.NewFromString(value)
-}
-
 // MustNewFromString parses the provided string representation into a Decimal or panics if an error occurs.
-//
-// Example:
-//     d := MustNewFromString("-123.45")
-//     d2 := MustNewFromString(".0001")
 func (c Context) MustNewFromString(value string) Decimal {
 	d, err := c.NewFromString(value)
 	if err != nil {
@@ -127,15 +110,7 @@ func (c Context) MustNewFromString(value string) Decimal {
 	return d
 }
 
-// MustNewFromString parses the string representation into a decimal using the default representation or panics.
-func MustNewFromString(value string) Decimal {
-	return Default.MustNewFromString(value)
-}
-
 // NewFromRat returns a new Decimal from a big.Rat.
-//
-// Example:
-//    d := NewFromRat(big.NewRat(10, 5))
 func (c Context) NewFromRat(value *big.Rat) Decimal {
 	var str string
 	if value.IsInt() {
@@ -152,17 +127,8 @@ func (c Context) NewFromRat(value *big.Rat) Decimal {
 	return d
 }
 
-// NewFromRate returns a new decimal from a big.Rat using the default context.
-func NewFromRat(value *big.Rat) Decimal {
-	return Default.NewFromRat(value)
-}
-
 // NewFromFloat converts a float64 to Decimal.
 // NOTE: this will return an error on NaN, +/-inf.
-//
-// Example:
-//     NewFromFloat(123.45678901234567).String() // output: "123.4567890123456"
-//     NewFromFloat(.00000000000000001).String() // output: "0.00000000000000001"
 func (c Context) NewFromFloat(value float64) (Decimal, error) {
 	floor := math.Floor(value)
 
@@ -178,11 +144,6 @@ func (c Context) NewFromFloat(value float64) (Decimal, error) {
 	return c.NewFromString(str)
 }
 
-// NewFromFloat converts a float64 to Decimal using the default context.
-func NewFromFloat(value float64) (Decimal, error) {
-	return Default.NewFromFloat(value)
-}
-
 // MustNewFromFloat creates a decimal number equivalent to the provided float.
 // It will panic on error.
 func (c Context) MustNewFromFloat(value float64) Decimal {
@@ -191,10 +152,4 @@ func (c Context) MustNewFromFloat(value float64) Decimal {
 		panic(err)
 	}
 	return d
-}
-
-// MustNewFromFloat creates a decimal number equivalent to the provided float or
-// panics. It uses the default context.
-func MustNewFromFloat(value float64) Decimal {
-	return Default.MustNewFromFloat(value)
 }
