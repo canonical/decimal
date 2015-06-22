@@ -22,29 +22,13 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strconv"
 	"strings"
 )
 
-// DivisionPrecision is the number of decimal places in the result when it
-// doesn't divide exactly.
-//
-// Example:
-//     d1 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
-//     d1.String() // output: "0.6666666666666667"
-//     d2 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(30000)
-//     d2.String() // output: "0.0000666666666667"
-//     d3 := decimal.NewFromFloat(20000).Div(decimal.NewFromFloat(3)
-//     d3.String() // output: "6666.6666666666666667"
-//     decimal.DivisionPrecision = 3
-//     d4 := decimal.NewFromFloat(2).Div(decimal.NewFromFloat(3)
-//     d4.String() // output: "0.667"
-var DivisionPrecision = 16
+// Zero constant.
+var Zero = DefaultContext.New(0, 1)
 
 var (
-	// Zero constant, to make computations faster.
-	Zero = New(0, 1)
-
 	zeroInt = big.NewInt(0)
 	tenInt  = big.NewInt(10)
 	oneInt  = big.NewInt(1)
@@ -53,6 +37,8 @@ var (
 // Decimal represents a fixed-point decimal. It is immutable.
 // number = value * 10 ^ exp
 type Decimal struct {
+	Context
+
 	value *big.Int
 
 	// NOTE(vadim): this must be an int32, because we cast it to float64 during
@@ -63,146 +49,75 @@ type Decimal struct {
 	exp int32
 }
 
-// New returns a new fixed-point decimal, value * 10 ^ exp.
-func New(value int64, exp int32) Decimal {
-	return Decimal{
-		value: big.NewInt(value),
-		exp:   exp,
+// Round returns a rounded decimal number.
+//
+// Rounding can only be performed with an exponent larger than the
+// exponent of the number. If the exponent is smaller, the number is
+// returned unchanged.
+func (d Decimal) Round(exp int32) Decimal {
+	if exp <= d.exp {
+		return d
 	}
+	d.ensureInitialized()
+
+	expShift := exp - d.exp - 1
+	rounding := new(big.Int).Exp(tenInt, big.NewInt(int64(expShift)), nil)
+	rounding.Mul(rounding, big.NewInt(int64(d.value.Sign()*5)))
+
+	rounded := d
+	rounded.value.Add(rounded.value, rounding)
+
+	return rounded.rescale(exp)
 }
 
-// NewFromString returns a new Decimal from a string representation.
-//
-// Example:
-//     d, err := NewFromString("-123.45")
-//     d2, err := NewFromString(".0001")
-func NewFromString(value string) (Decimal, error) {
-	var intString string
-	var exp int32
-	parts := strings.Split(value, ".")
-	if len(parts) == 1 {
-		// There is no decimal point, we can just parse the original string as
-		// an int
-		intString = value
-		exp = 0
-	} else if len(parts) == 2 {
-		intString = parts[0] + parts[1]
-		expInt := -len(parts[1])
-		if expInt < math.MinInt32 {
-			// NOTE(vadim): I doubt a string could realistically be this long
-			return Decimal{}, fmt.Errorf("can't convert %s to decimal: fractional part too long", value)
+// String returns the string representation of the decimal
+// with the fixed point.
+func (d Decimal) String() string {
+	d.ensureInitialized()
+
+	var intPart, fractionalPart string
+
+	if d.exp >= 0 {
+		intPart = d.rescale(0).value.String()
+		if d.precision > 0 {
+			fractionalPart = strings.Repeat("0", int(d.precision))
 		}
-		exp = int32(expInt)
 	} else {
-		return Decimal{}, fmt.Errorf("can't convert %s to decimal: too many .s", value)
+		abs := new(big.Int).Abs(d.value)
+		str := abs.String()
+
+		dExpInt := int(d.exp)
+		if len(str) > -dExpInt {
+			intPart = str[:len(str)+dExpInt]
+			fractionalPart = str[len(str)+dExpInt:]
+		} else {
+			intPart = "0"
+
+			num0s := -dExpInt - len(str)
+			fractionalPart = strings.Repeat("0", num0s) + str
+		}
+
+		if len(fractionalPart) < int(d.precision) {
+			fractionalPart = fractionalPart + strings.Repeat("0", int(d.precision)-len(fractionalPart))
+		}
+		if d.value.Sign() < 0 {
+			intPart = "-" + intPart
+		}
+
 	}
 
-	dValue := new(big.Int)
-	_, ok := dValue.SetString(intString, 10)
-	if !ok {
-		return Decimal{}, fmt.Errorf("can't convert %s to decimal", value)
+	number := intPart
+	if len(fractionalPart) > 0 {
+		number += "." + fractionalPart
 	}
 
-	return Decimal{
-		value: dValue,
-		exp:   exp,
-	}, nil
-}
-
-// MustNewFromString parses the provided string representation into a Decimal or panics if an error occurs.
-//
-// Example:
-//     d := MustNewFromString("-123.45")
-//     d2 := MustNewFromString(".0001")
-func MustNewFromString(value string) Decimal {
-	d, err := NewFromString(value)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
-// NewFromRat returns a new Decimal from a big.Rat.
-//
-// Example:
-//    d := NewFromRat(big.NewRat(10, 5))
-func NewFromRat(value *big.Rat) Decimal {
-	var str string
-	if value.IsInt() {
-		str = value.Num().String()
-	} else {
-		str = value.FloatString(DivisionPrecision)
-	}
-	d, err := NewFromString(str)
-	if err != nil {
-		// Panic here, because we just failed to parse a string
-		// we constructed.
-		panic(err)
-	}
-	return d
-}
-
-// NewFromFloat converts a float64 to Decimal.
-// NOTE: this will panic on NaN, +/-inf
-//
-// Example:
-//     NewFromFloat(123.45678901234567).String() // output: "123.4567890123456"
-//     NewFromFloat(.00000000000000001).String() // output: "0.00000000000000001"
-func NewFromFloat(value float64) Decimal {
-	floor := math.Floor(value)
-
-	// fast path, where float is an int
-	if floor == value && !math.IsInf(value, 0) {
-		return New(int64(value), 0)
-	}
-
-	// slow path: float is a decimal
-	// HACK(vadim): do this the slow hacky way for now because the logic to
-	// convert a base-2 float to base-10 properly is not trivial
-	str := strconv.FormatFloat(value, 'f', -1, 64)
-	dec, err := NewFromString(str)
-	if err != nil {
-		panic(err)
-	}
-	return dec
-}
-
-// NewFromFloatWithExponent converts a float64 to Decimal, with an arbitrary
-// number of fractional digits.
-//
-// Example:
-//     NewFromFloatWithExponent(123.456, -2).String() // output: "123.46"
-func NewFromFloatWithExponent(value float64, exp int32) Decimal {
-	mul := math.Pow(10, -float64(exp))
-	floatValue := value * mul
-	if math.IsNaN(floatValue) || math.IsInf(floatValue, 0) {
-		panic(fmt.Sprintf("can't convert %v to decimal", floatValue))
-	}
-	dValue := big.NewInt(round(floatValue))
-
-	return Decimal{
-		value: dValue,
-		exp:   exp,
-	}
+	return number
 }
 
 // rescale returns a rescaled version of the decimal. Returned
 // decimal may be less precise if the given exponent is bigger
 // than the initial exponent of the Decimal.
 // NOTE: this will truncate, NOT round
-//
-// Example:
-// 	d := New(12345, -4)
-//	d2 := d.rescale(-1)
-//	d3 := d2.rescale(-4)
-//	println(d1)
-//	println(d2)
-//	println(d3)
-//
-// Output:
-//	1.2345
-//	1.2
-//	1.2000
 func (d Decimal) rescale(exp int32) Decimal {
 	d.ensureInitialized()
 	// NOTE(vadim): must convert exps to float64 before - to prevent overflow
@@ -217,46 +132,15 @@ func (d Decimal) rescale(exp int32) Decimal {
 	}
 
 	return Decimal{
-		value: value,
-		exp:   exp,
+		Context: d.Context,
+		value:   value,
+		exp:     exp,
 	}
 }
 
-// Round returns a rounded decimal number.
-//
-// Rounding can only be performed with an exponent larger than the
-// exponent of the number. If the exponent is smaller, the number is
-// returned unchanged.
-//
-// Example:
-//     d := New(1234545, -3)
-//     d.Round(-4) returns 1234.545
-//     d.Round(-2) returns 1234.55
-//     d.Round(-1) returns 1234.5
-//     d.Round(0) returns 1235
-//     d.Round(1) returns 1230
-//
-//     d := New(-1235, -3)
-//     d.Round(-2) returns 1.24
-func (d Decimal) Round(exp int32) Decimal {
-	if exp == d.exp {
-		return d
-	} else if exp < d.exp { // nothing to round
-		return d
-	}
-	d.ensureInitialized()
-
-	rounded := d.Add(New(int64(d.value.Sign()*5), exp-1))
-	return rounded.rescale(exp)
-}
-
-// Abs returns the absolute value of the decimal.
-func (d Decimal) Abs() Decimal {
-	d.ensureInitialized()
-	d2Value := new(big.Int).Abs(d.value)
-	return Decimal{
-		value: d2Value,
-		exp:   d.exp,
+func (d *Decimal) ensureInitialized() {
+	if d.value == nil {
+		d.value = new(big.Int)
 	}
 }
 
@@ -267,9 +151,20 @@ func (d Decimal) Add(d2 Decimal) Decimal {
 	rd2 := d2.rescale(baseScale)
 
 	d3Value := new(big.Int).Add(rd.value, rd2.value)
-	return Decimal{
+	return d.Context.Adapt(Decimal{
 		value: d3Value,
 		exp:   baseScale,
+	})
+}
+
+// Abs returns the absolute value of the decimal.
+func (d Decimal) Abs() Decimal {
+	d.ensureInitialized()
+	d2Value := new(big.Int).Abs(d.value)
+	return Decimal{
+		Context: d.Context,
+		value:   d2Value,
+		exp:     d.exp,
 	}
 }
 
@@ -280,10 +175,10 @@ func (d Decimal) Sub(d2 Decimal) Decimal {
 	rd2 := d2.rescale(baseScale)
 
 	d3Value := new(big.Int).Sub(rd.value, rd2.value)
-	return Decimal{
+	return d.Context.Adapt(Decimal{
 		value: d3Value,
 		exp:   baseScale,
-	}
+	})
 }
 
 // Mul returns d * d2.
@@ -299,20 +194,20 @@ func (d Decimal) Mul(d2 Decimal) Decimal {
 	}
 
 	d3Value := new(big.Int).Mul(d.value, d2.value)
-	return Decimal{
+	return d.Context.Adapt(Decimal{
 		value: d3Value,
 		exp:   int32(expInt64),
-	}
+	})
 }
 
 // Div returns a / b. If it doesn't divide exactly, the result will have
 // DivisionPrecision digits after the decimal point.
 func (a Decimal) Div(b Decimal) Decimal {
 	if a.value.Cmp(zeroInt) == 0 {
-		return Zero
+		return a.Context.Zero()
 	}
 
-	precision := int32(DivisionPrecision)
+	precision := int32(a.precision)
 
 	// Working representation of the numerator.
 	num := big.NewInt(0).Set(a.value)
@@ -339,29 +234,17 @@ func (a Decimal) Div(b Decimal) Decimal {
 		num.Add(num, big.NewInt(1))
 	}
 
-	// Remove insignificant decimal places.
-	// TODO: this will be simplified once decimal context is introduced.
-	m := big.NewInt(0)
-	temp := big.NewInt(0).Set(num)
-	var expShift int32
-	for m.Cmp(zeroInt) == 0 {
-		expShift++
-		temp.DivMod(temp, tenInt, m)
-	}
-	expShift--
-	expScale := big.NewInt(0).Exp(tenInt, big.NewInt(int64(expShift)), nil)
-	num.Div(num, expScale)
-
-	return Decimal{
-		value: num,
-		exp:   -(precision - expShift),
-	}
+	return a.Context.Adapt(Decimal{
+		Context: a.Context,
+		value:   num,
+		exp:     -precision,
+	})
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
-// -1 if d <  d2
-//  0 if d == d2
-// +1 if d >  d2
+//     -1 if d <  d2
+//      0 if d == d2
+//     +1 if d >  d2
 func (d Decimal) Cmp(d2 Decimal) int {
 	baseExp := min(d.exp, d2.exp)
 	rd := d.rescale(baseExp)
@@ -406,49 +289,19 @@ func (d Decimal) Float64() (f float64, exact bool) {
 	return d.Rat().Float64()
 }
 
-// String returns the string representation of the decimal
-// with the fixed point.
-//
-// Example:
-//     d := New(-12345, -3)
-//     println(d.String())
-//
-// Output:
-//     -12.345
-func (d Decimal) String() string {
-	if d.exp >= 0 {
-		return d.rescale(0).value.String()
-	}
-
-	abs := new(big.Int).Abs(d.value)
-	str := abs.String()
-
-	var intPart, fractionalPart string
-	dExpInt := int(d.exp)
-	if len(str) > -dExpInt {
-		intPart = str[:len(str)+dExpInt]
-		fractionalPart = str[len(str)+dExpInt:]
-	} else {
-		intPart = "0"
-
-		num0s := -dExpInt - len(str)
-		fractionalPart = strings.Repeat("0", num0s) + str
-	}
-
-	number := intPart
-	if len(fractionalPart) > 0 {
-		number += "." + fractionalPart
-	}
-
-	if d.value.Sign() < 0 {
-		return "-" + number
-	}
-	return number
-}
-
 // StringScaled first scales the decimal then calls .String() on it.
 func (d Decimal) StringScaled(exp int32) string {
 	return d.rescale(exp).String()
+}
+
+// Truncate truncates off digits from the number, without rounding.
+// NOTE: precision is the last digit that will not be truncated (should be >= 0)
+func (d Decimal) Truncate(precision int32) Decimal {
+	d.ensureInitialized()
+	if precision >= 0 && -precision > d.exp {
+		return d.rescale(-precision)
+	}
+	return d
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -458,7 +311,7 @@ func (d *Decimal) UnmarshalJSON(decimalBytes []byte) error {
 		return fmt.Errorf("Error decoding string '%s': %s", decimalBytes, err)
 	}
 
-	decimal, err := NewFromString(str)
+	decimal, err := d.Context.NewFromString(str)
 	*d = decimal
 	if err != nil {
 		return fmt.Errorf("Error decoding string '%s': %s", str, err)
@@ -472,19 +325,6 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 	return []byte(str), nil
 }
 
-// Truncate truncates off digits from the number, without rounding.
-// NOTE: precision is the last digit that will not be truncated (should be >= 0)
-//
-// Example:
-//     decimal.NewFromString("123.456").Truncate(2).String() // "123.45"
-func (d Decimal) Truncate(precision int32) Decimal {
-	d.ensureInitialized()
-	if precision >= 0 && -precision > d.exp {
-		return d.rescale(-precision)
-	}
-	return d
-}
-
 // Scan implements the sql.Scanner interface for database deserialization.
 func (d *Decimal) Scan(value interface{}) error {
 	str, err := unquoteIfQuoted(value)
@@ -496,17 +336,12 @@ func (d *Decimal) Scan(value interface{}) error {
 	return err
 }
 
-// Value implements the driver.Valuer interface for database serialization.
-func (d Decimal) Value() (driver.Value, error) {
-	return d.String(), nil
-}
-
 // UnmarshalText implements the encoding.TextUnmarshaler interface for XML
 // deserialization.
 func (d *Decimal) UnmarshalText(text []byte) error {
 	str := string(text)
 
-	dec, err := NewFromString(str)
+	dec, err := d.Context.NewFromString(str)
 	*d = dec
 	if err != nil {
 		return fmt.Errorf("Error decoding string '%s': %s", str, err)
@@ -521,17 +356,40 @@ func (d Decimal) MarshalText() (text []byte, err error) {
 	return []byte(d.String()), nil
 }
 
-func (d *Decimal) ensureInitialized() {
-	if d.value == nil {
-		d.value = new(big.Int)
-	}
+// Value implements the driver.Valuer interface for database serialization.
+func (d Decimal) Value() (driver.Value, error) {
+	return d.String(), nil
 }
 
-func min(x, y int32) int32 {
-	if x >= y {
-		return y
-	}
-	return x
+// New returns a new fixed-point decimal, value * 10 ^ exp. Using the default context.
+func New(value int64, exp int32) Decimal {
+	return DefaultContext.New(value, exp)
+}
+
+// NewFromString parses a string representation into a decimal using the default context.
+func NewFromString(value string) (Decimal, error) {
+	return DefaultContext.NewFromString(value)
+}
+
+// MustNewFromString parses the string representation into a decimal using the default representation or panics.
+func MustNewFromString(value string) Decimal {
+	return DefaultContext.MustNewFromString(value)
+}
+
+// NewFromRat returns a new decimal from a big.Rat using the default context.
+func NewFromRat(value *big.Rat) Decimal {
+	return DefaultContext.NewFromRat(value)
+}
+
+// NewFromFloat converts a float64 to Decimal using the default context.
+func NewFromFloat(value float64) (Decimal, error) {
+	return DefaultContext.NewFromFloat(value)
+}
+
+// MustNewFromFloat creates a decimal number equivalent to the provided float or
+// panics. It uses the default context.
+func MustNewFromFloat(value float64) Decimal {
+	return DefaultContext.MustNewFromFloat(value)
 }
 
 func round(n float64) int64 {
@@ -539,6 +397,13 @@ func round(n float64) int64 {
 		return int64(n - 0.5)
 	}
 	return int64(n + 0.5)
+}
+
+func min(x, y int32) int32 {
+	if x >= y {
+		return y
+	}
+	return x
 }
 
 func unquoteIfQuoted(value interface{}) (string, error) {
