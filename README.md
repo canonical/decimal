@@ -1,4 +1,4 @@
-# decimal [![Build Status](https://travis-ci.org/shopspring/decimal.png?branch=master)](https://travis-ci.org/shopspring/decimal)
+# decimal
 
 Arbitrary-precision fixed-point decimal numbers in go.
 
@@ -14,7 +14,7 @@ NOTE: can "only" represent numbers with a maximum of 2^31 digits after the decmi
 
 ## Install
 
-Run `go get github.com/shopspring/decimal`
+Run `go get github.com/CanonicalLtd/decimal`
 
 ## Usage
 
@@ -23,7 +23,7 @@ package main
 
 import (
     "fmt"
-    "github.com/shopspring/decimal"
+    "github.com/CanonicalLtd/decimal"
 )
 
 func main() {
@@ -51,17 +51,9 @@ func main() {
 }
 ```
 
-## Documentation
-
-http://godoc.org/github.com/shopspring/decimal
-
-## Production Usage
-
-* [Spring](https://shopspring.com/), since August 14, 2014.
-* If you are using this in production, please let us know!
-
 ## License
 
 The MIT License (MIT)
 
 This is a heavily modified fork of [fpd.Decimal](https://github.com/oguzbilgic/fpd), which was also released under the MIT License.
+This is a heavily modified fork of [shopspring Decimal](https://github.com/shopspring/decimal), which was also released under the MIT License.
