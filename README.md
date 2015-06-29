@@ -53,7 +53,9 @@ func main() {
 
 ## License
 
-The MIT License (MIT)
+This project is a derivative of work released under an MIT license. All other rights reserved.
 
 This is a heavily modified fork of [fpd.Decimal](https://github.com/oguzbilgic/fpd), which was also released under the MIT License.
 This is a heavily modified fork of [shopspring Decimal](https://github.com/shopspring/decimal), which was also released under the MIT License.
+Copyright 2015 Canonical Ltd. 
+
