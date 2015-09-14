@@ -107,10 +107,14 @@ func NewTest(t *testing.T, context *decimal.Context, line string) (*Test, *decim
 	return nil, nil
 }
 
-func ReadFile(t *testing.T, filename string) []*Test {
+func ReadTests(t *testing.T, filename string) []*Test {
 	file, err := os.Open(filename)
 	if err != nil {
-		t.Fatalf("failed to read test file %v", err)
+		if os.IsNotExist(err) {
+			t.Skipf("file %s does not exist, skipping test", filename)
+		} else {
+			t.Fatalf("failed to read test file %v", err)
+		}
 	}
 	defer file.Close()
 
@@ -132,7 +136,7 @@ func ReadFile(t *testing.T, filename string) []*Test {
 }
 
 func runTests(t *testing.T, filename string) {
-	tests := ReadFile(t, filename)
+	tests := ReadTests(t, filename)
 	pass := 0
 	skipped := 0
 	fail := 0
