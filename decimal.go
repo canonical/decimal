@@ -24,6 +24,9 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/juju/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // DivisionPrecision is the number of decimal places in the result when it
@@ -111,6 +114,7 @@ func NewFromString(value string) (Decimal, error) {
 		value: dValue,
 		exp:   exp,
 	}, nil
+
 }
 
 // NewFromRat returns a new Decimal from a big.Rat.
@@ -444,6 +448,34 @@ func (d *Decimal) UnmarshalJSON(decimalBytes []byte) error {
 func (d Decimal) MarshalJSON() ([]byte, error) {
 	str := "\"" + d.String() + "\""
 	return []byte(str), nil
+}
+
+// getBSON implements bson.Getter.
+func (d Decimal) GetBSON() (interface{}, error) {
+	value := struct {
+		Value string `bson:"value"`
+	}{
+		Value: d.String(),
+	}
+	return value, nil
+}
+
+// SetBSON implements bson.Setter.
+func (d *Decimal) SetBSON(raw bson.Raw) error {
+	decoded := new(struct {
+		Value string `bson:"value"`
+	})
+	err := raw.Unmarshal(decoded)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	newValue, err := NewFromString(decoded.Value)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	d.value = newValue.value
+	d.exp = newValue.exp
+	return nil
 }
 
 // Truncate truncates off digits from the number, without rounding.

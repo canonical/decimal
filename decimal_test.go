@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/big"
 	"testing"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 var testTable = map[float64]string{
@@ -526,6 +528,23 @@ func TestDecimal_Cmp2(t *testing.T) {
 
 	if a.Cmp(b) != -1 {
 		t.Errorf("Error")
+	}
+}
+
+func TestBSON(t *testing.T) {
+	a := New(123, 2)
+
+	data, err := bson.Marshal(a)
+	if err != nil {
+		t.Error("Error")
+	}
+	var b Decimal
+	err = bson.Unmarshal(data, &b)
+	if err != nil {
+		t.Error("Error")
+	}
+	if a.Cmp(b) != 0 {
+		t.Error("Error")
 	}
 }
 
