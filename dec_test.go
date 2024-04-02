@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/CanonicalLtd/decimal"
+	"github.com/canonical/decimal"
 )
 
 var DirectiveRe = regexp.MustCompile(`(\w+):\s+(\d+)`)

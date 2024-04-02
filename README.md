@@ -14,7 +14,7 @@ NOTE: can "only" represent numbers with a maximum of 2^31 digits after the decmi
 
 ## Install
 
-Run `go get github.com/CanonicalLtd/decimal`
+Run `go get github.com/canonical/decimal`
 
 ## Usage
 
@@ -23,7 +23,7 @@ package main
 
 import (
     "fmt"
-    "github.com/CanonicalLtd/decimal"
+    "github.com/canonical/decimal"
 )
 
 func main() {
