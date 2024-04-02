@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/CanonicalLtd/decimal"
+	"github.com/canonical/decimal"
 )
 
 func TestSumMaintainsContext(t *testing.T) {
@@ -31,7 +31,7 @@ func TestNegativeContext(t *testing.T) {
 
 	a := ctx.MustNewFromString("1234.056")
 	if a.String() != "1200" {
-		t.Fatalf("expected '1200', got %d", a.String())
+		t.Fatalf("expected '1200', got %s", a.String())
 	}
 }
 
@@ -143,13 +143,13 @@ func panicMatches(t *testing.T, f func(), exp string) (ret bool) {
 	r := regexp.MustCompile("^" + exp + "$")
 	defer func() {
 		if message := recover(); message != nil {
-			switch message.(type) {
+			switch msg := message.(type) {
 			case error:
-				if ret = r.MatchString((message.(error)).Error()); !ret {
+				if ret = r.MatchString(msg.Error()); !ret {
 					t.Logf("%q did not match %q", (message.(error)).Error(), exp)
 				}
 			case string:
-				if ret = r.MatchString((message.(string))); !ret {
+				if ret = r.MatchString(msg); !ret {
 					t.Logf("%q did not match %q", message.(string), exp)
 				}
 			default:
@@ -337,10 +337,10 @@ var floatStringTestsLong = map[float64]string{
 
 func TestNewFromFloatDefaultContext(t *testing.T) {
 	for src, expect := range floatStringTestsLong {
-		t.Logf("testing string parsing for %q", src)
+		t.Logf("testing string parsing for %f", src)
 		d, err := decimal.DefaultContext.NewFromFloat(src)
 		if err != nil {
-			t.Errorf("error while parsing %s", src)
+			t.Errorf("error while parsing %f", src)
 		} else if d.String() != expect {
 			t.Errorf("expected %s, got %s", expect, d.String())
 		}

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/CanonicalLtd/decimal"
+	"github.com/canonical/decimal"
 )
 
 // A decimal context for testing with a sane number of decimal places.

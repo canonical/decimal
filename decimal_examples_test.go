@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/CanonicalLtd/decimal"
+	"github.com/canonical/decimal"
 )
 
 func ExampleNewContext() {
