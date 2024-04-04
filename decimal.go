@@ -403,6 +403,11 @@ func NewFromRat(value *big.Rat) Decimal {
 	return DefaultContext.NewFromRat(value)
 }
 
+// NewFromInt converts an int64 to Decimal using the default context.
+func NewFromInt(value int64) Decimal {
+	return DefaultContext.New(value, 0)
+}
+
 // NewFromFloat converts a float64 to Decimal using the default context.
 func NewFromFloat(value float64) (Decimal, error) {
 	return DefaultContext.NewFromFloat(value)
