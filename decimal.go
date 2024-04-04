@@ -280,6 +280,14 @@ func (d Decimal) Equals(d2 Decimal) bool {
 	return d.Equal(d2)
 }
 
+// IsZero returns true if the number represented by d is zero.
+func (d Decimal) IsZero() bool {
+	if d.value == nil {
+		return true
+	}
+	return d.value.Sign() == 0
+}
+
 // Exponent returns the exponent, or scale component of the decimal.
 func (d Decimal) Exponent() int32 {
 	return d.exp
