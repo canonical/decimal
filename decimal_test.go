@@ -40,13 +40,36 @@ func TestDecimalRound(t *testing.T) {
 			i, test.val, test.exp, test.roundTo)
 		d := testCtx.New(test.val, test.exp).Round(test.roundTo)
 
-		if d.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, d.String())
+		if d.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, d.StringFixed())
 		}
 	}
 }
 
 func TestDecimalString(t *testing.T) {
+	tests := []struct {
+		val      int64
+		exp      int32
+		expected string
+	}{
+		{50, 0, "50"},
+		{-5, 1, "-50"},
+		{1234, -2, "12.34"},
+		{-4321, -2, "-43.21"},
+		{1, -7, "0"},
+		{12034, -3, "12.034"},
+	}
+
+	for i, test := range tests {
+		t.Logf("test %d: %d, %d", i, test.val, test.exp)
+		d := testCtx.New(test.val, test.exp)
+		if d.String() != test.expected {
+			t.Fatalf("expected %q, go %q", test.expected, d.String())
+		}
+	}
+}
+
+func TestDecimalStringFixed(t *testing.T) {
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -62,8 +85,8 @@ func TestDecimalString(t *testing.T) {
 	for i, test := range tests {
 		t.Logf("test %d: %d, %d", i, test.val, test.exp)
 		d := testCtx.New(test.val, test.exp)
-		if d.String() != test.expected {
-			t.Fatalf("expected %q, go %q", test.expected, d.String())
+		if d.StringFixed() != test.expected {
+			t.Fatalf("expected %q, go %q", test.expected, d.StringFixed())
 		}
 	}
 }
@@ -93,8 +116,8 @@ func TestAdd(t *testing.T) {
 		b := testCtx.New(test.bVal, test.bExp)
 
 		c := a.Add(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintained")
@@ -103,8 +126,8 @@ func TestAdd(t *testing.T) {
 		// Run same test with different context.
 		b = ctx2.New(test.bVal, test.bExp)
 		c = a.Add(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintained")
@@ -142,8 +165,8 @@ func TestSub(t *testing.T) {
 		b := testCtx.New(test.bVal, test.bExp)
 
 		c := a.Sub(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintainted during operation")
@@ -152,8 +175,8 @@ func TestSub(t *testing.T) {
 		// Run same test with different context.
 		b = ctx2.New(test.bVal, test.bExp)
 		c = a.Sub(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintained")
@@ -186,8 +209,8 @@ func TestMul(t *testing.T) {
 		b := testCtx.New(test.bVal, test.bExp)
 
 		c := a.Mul(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintainted during operation")
@@ -196,8 +219,8 @@ func TestMul(t *testing.T) {
 		// Run same test with different context.
 		b = ctx2.New(test.bVal, test.bExp)
 		c = a.Mul(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintained")
@@ -244,8 +267,8 @@ func TestDecimalDiv(t *testing.T) {
 		b := testCtx.New(test.bVal, test.bExp)
 
 		c := a.Div(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintainted during operation")
@@ -254,8 +277,8 @@ func TestDecimalDiv(t *testing.T) {
 		// Run same test with different context.
 		b = ctx2.New(test.bVal, test.bExp)
 		c = a.Div(b)
-		if c.String() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.String())
+		if c.StringFixed() != test.expected {
+			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
 			t.Errorf("context not maintained")

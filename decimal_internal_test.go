@@ -32,8 +32,8 @@ func TestDecimalRescale(t *testing.T) {
 		t.Logf("test %d", i)
 
 		d := testCtx.New(test.value, test.exp).rescale(test.rescale)
-		if d.String() != test.before {
-			t.Errorf("expected %s, got %s", test.before, d.String())
+		if d.StringFixed() != test.before {
+			t.Errorf("expected %s, got %s", test.before, d.StringFixed())
 		}
 
 		// test StringScaled

@@ -11,7 +11,7 @@ func ExampleNewContext() {
 	context := decimal.NewContext(6)
 	fmt.Printf("%d\n", context.Precision())
 	d := context.New(6, -5)
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	// Output:
 	// 6
 	// 0.000060
@@ -19,11 +19,11 @@ func ExampleNewContext() {
 
 func ExampleDecimal_Round() {
 	d := decimal.New(1234545, -3)
-	fmt.Println(d.Round(-4).String())
-	fmt.Println(d.Round(-2).String())
-	fmt.Println(d.Round(-1).String())
-	fmt.Println(d.Round(0).String())
-	fmt.Println(d.Round(1).String())
+	fmt.Println(d.Round(-4).StringFixed())
+	fmt.Println(d.Round(-2).StringFixed())
+	fmt.Println(d.Round(-1).StringFixed())
+	fmt.Println(d.Round(0).StringFixed())
+	fmt.Println(d.Round(1).StringFixed())
 	// Output:
 	// 1234.5450000000000000
 	// 1234.5500000000000000
@@ -34,13 +34,13 @@ func ExampleDecimal_Round() {
 
 func ExampleDecimal_String() {
 	d := decimal.New(-12345, -3)
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	// Output: -12.3450000000000000
 }
 
 func ExampleDecimal_Truncate() {
 	d := decimal.MustNewFromString("123.456").Truncate(2)
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	// Output: 123.4500000000000000
 }
 
@@ -49,12 +49,12 @@ func ExampleContext_NewFromString() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	d, err = decimal.NewFromString(".0001")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	// Output:
 	// -123.4500000000000000
 	// 0.0001000000000000
@@ -62,7 +62,7 @@ func ExampleContext_NewFromString() {
 
 func ExampleContext_NewFromRat() {
 	d := decimal.NewFromRat(big.NewRat(10, 5))
-	fmt.Println(d)
+	fmt.Println(d.StringFixed())
 	// Output:
 	// 2.0000000000000000
 }
@@ -72,12 +72,12 @@ func ExampleContext_NewFromFloat() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	d, err = decimal.NewFromFloat(.0000000000000001)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(d.String())
+	fmt.Println(d.StringFixed())
 	// Output:
 	// 123.4567890123456700
 	// 0.0000000000000001
