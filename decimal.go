@@ -285,7 +285,6 @@ func (d Decimal) IsZero() bool {
 	if d.value == nil {
 		return true
 	}
-	return d.value.Cmp()
 	return d.value.Sign() == 0
 }
 
