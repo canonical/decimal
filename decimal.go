@@ -70,7 +70,7 @@ func (d Decimal) Round(exp int32) Decimal {
 	return rounded.rescale(exp)
 }
 
-// String returns the string representation of the decimal with the fixed point.
+// String returns the string representation of the Decimal.
 func (d Decimal) String() string {
 	return d.string(true)
 }
@@ -285,6 +285,7 @@ func (d Decimal) IsZero() bool {
 	if d.value == nil {
 		return true
 	}
+	return d.value.Cmp()
 	return d.value.Sign() == 0
 }
 

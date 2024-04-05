@@ -32,10 +32,16 @@ func ExampleDecimal_Round() {
 	// 1240.0000000000000000
 }
 
-func ExampleDecimal_String() {
+func ExampleDecimal_StringFixed() {
 	d := decimal.New(-12345, -3)
 	fmt.Println(d.StringFixed())
 	// Output: -12.3450000000000000
+}
+
+func ExampleDecimal_String() {
+	d := decimal.New(-12345, -3)
+	fmt.Println(d.String())
+	// Output: -12.345
 }
 
 func ExampleDecimal_Truncate() {

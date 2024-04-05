@@ -56,6 +56,8 @@ func TestDecimalString(t *testing.T) {
 		{-5, 1, "-50"},
 		{1234, -2, "12.34"},
 		{-4321, -2, "-43.21"},
+		// The precision of this number is 6 fractional digits, hence the result
+		// is 0.
 		{1, -7, "0"},
 		{12034, -3, "12.034"},
 	}
