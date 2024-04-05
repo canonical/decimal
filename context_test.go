@@ -21,8 +21,8 @@ func TestSumMaintainsContext(t *testing.T) {
 	if c.Context != a.Context {
 		t.Fatalf("expected result of sum to maintain context.")
 	}
-	if c.String() != "510.000000" {
-		t.Fatalf("unexpected result %q", c.String())
+	if c.StringFixed() != "510.000000" {
+		t.Fatalf("unexpected result %q", c.StringFixed())
 	}
 }
 
@@ -30,8 +30,8 @@ func TestNegativeContext(t *testing.T) {
 	ctx := decimal.NewContext(-2)
 
 	a := ctx.MustNewFromString("1234.056")
-	if a.String() != "1200" {
-		t.Fatalf("expected '1200', got %s", a.String())
+	if a.StringFixed() != "1200" {
+		t.Fatalf("expected '1200', got %s", a.StringFixed())
 	}
 }
 
@@ -49,8 +49,8 @@ func TestNew(t *testing.T) {
 	for i, test := range tests {
 		t.Logf("test %d", i)
 		d := testCtx.New(test.value, test.exp)
-		if d.String() != test.expected {
-			t.Fatalf("expected %q, got %q", test.expected, d.String())
+		if d.StringFixed() != test.expected {
+			t.Fatalf("expected %q, got %q", test.expected, d.StringFixed())
 		}
 		if d.Context != testCtx {
 			t.Fatalf("context of decimal does not match creation context")
@@ -119,8 +119,8 @@ func TestMustNewFromString(t *testing.T) {
 	for src, expect := range stringTests {
 		t.Logf("testing string parsing for %q", src)
 		d := testCtx.MustNewFromString(src)
-		if d.String() != expect {
-			t.Errorf("expected %s, got %s", expect, d.String())
+		if d.StringFixed() != expect {
+			t.Errorf("expected %s, got %s", expect, d.StringFixed())
 		}
 	}
 }
@@ -184,8 +184,8 @@ func TestMonetaryContextContextFromString(t *testing.T) {
 		d, err := decimal.MonetaryContext.NewFromString(src)
 		if err != nil {
 			t.Errorf("error while parsing %s: %v", src, err)
-		} else if d.String() != expect {
-			t.Errorf("expected %s, got %s", expect, d.String())
+		} else if d.StringFixed() != expect {
+			t.Errorf("expected %s, got %s", expect, d.StringFixed())
 		}
 	}
 }
@@ -235,8 +235,8 @@ func TestNewFromRat(t *testing.T) {
 	for i, test := range tests {
 		t.Logf("test %d: %s", i, test.about)
 		d := testCtx.NewFromRat(big.NewRat(test.num, test.denom))
-		if d.String() != test.expect {
-			t.Errorf("expected %q, got %q", test.expect, d.String())
+		if d.StringFixed() != test.expect {
+			t.Errorf("expected %q, got %q", test.expect, d.StringFixed())
 		}
 	}
 }
@@ -291,8 +291,8 @@ func TestNewFromFloat(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
-		if d.String() != expected {
-			t.Errorf("expected %s, got %s", expected, d.String())
+		if d.StringFixed() != expected {
+			t.Errorf("expected %s, got %s", expected, d.StringFixed())
 		}
 		if d.Context != testCtx {
 			t.Errorf("unknown context value")
@@ -306,8 +306,8 @@ func TestNewFromString(t *testing.T) {
 		d, err := testCtx.NewFromString(src)
 		if err != nil {
 			t.Errorf("error while parsing %s", src)
-		} else if d.String() != expect {
-			t.Errorf("expected %s, got %s", expect, d.String())
+		} else if d.StringFixed() != expect {
+			t.Errorf("expected %s, got %s", expect, d.StringFixed())
 		}
 	}
 }
@@ -341,8 +341,8 @@ func TestNewFromFloatDefaultContext(t *testing.T) {
 		d, err := decimal.DefaultContext.NewFromFloat(src)
 		if err != nil {
 			t.Errorf("error while parsing %f", src)
-		} else if d.String() != expect {
-			t.Errorf("expected %s, got %s", expect, d.String())
+		} else if d.StringFixed() != expect {
+			t.Errorf("expected %s, got %s", expect, d.StringFixed())
 		}
 	}
 }
@@ -365,7 +365,7 @@ func TestNewFromFloatError(t *testing.T) {
 		var d decimal.Decimal
 
 		if !panicMatches(t, func() { d = testCtx.MustNewFromFloat(flt) }, `can't convert .* to decimal`) {
-			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.String())
+			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.StringFixed())
 		}
 	}
 }

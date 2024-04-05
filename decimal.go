@@ -2,16 +2,16 @@
 //
 // To use as part of a struct:
 //
-//     type Struct struct {
-//         Number Decimal
-//     }
+//	type Struct struct {
+//	    Number Decimal
+//	}
 //
 // The zero-value of a Decimal is 0, as you would expect.
 //
 // The best way to create a new Decimal is to use decimal.NewFromString, ex:
 //
-//     n, err := decimal.NewFromString("-123.4567")
-//     n.String() // output: "-123.4567"
+//	n, err := decimal.NewFromString("-123.4567")
+//	n.String() // output: "-123.4567"
 //
 // NOTE: This can "only" represent numbers with a maximum of 2^31 digits
 // after the decimal point.
@@ -70,9 +70,19 @@ func (d Decimal) Round(exp int32) Decimal {
 	return rounded.rescale(exp)
 }
 
-// String returns the string representation of the decimal
-// with the fixed point.
+// String returns the string representation of the Decimal.
 func (d Decimal) String() string {
+	return d.string(true)
+}
+
+// StringFixed returns the string representation of the decimal with the fixed
+// point and a fixed number of digits after the decimal point, as instructed by
+// the precision.
+func (d Decimal) StringFixed() string {
+	return d.string(false)
+}
+
+func (d Decimal) string(trim bool) string {
 	d.ensureInitialized()
 
 	var intPart, fractionalPart string
@@ -103,7 +113,13 @@ func (d Decimal) String() string {
 		if d.value.Sign() < 0 {
 			intPart = "-" + intPart
 		}
+	}
 
+	if trim {
+		i := len(fractionalPart) - 1
+		for ; i >= 0 && fractionalPart[i] == '0'; i-- {
+			fractionalPart = fractionalPart[:i]
+		}
 	}
 
 	number := intPart
@@ -242,9 +258,10 @@ func (a Decimal) Div(b Decimal) Decimal {
 }
 
 // Cmp compares the numbers represented by d and d2 and returns:
-//     -1 if d <  d2
-//      0 if d == d2
-//     +1 if d >  d2
+//
+//	-1 if d <  d2
+//	 0 if d == d2
+//	+1 if d >  d2
 func (d Decimal) Cmp(d2 Decimal) int {
 	baseExp := min(d.exp, d2.exp)
 	rd := d.rescale(baseExp)
@@ -253,9 +270,23 @@ func (d Decimal) Cmp(d2 Decimal) int {
 	return rd.value.Cmp(rd2.value)
 }
 
-// Equals returns whether the numbers represented by d and d2 are equal.
-func (d Decimal) Equals(d2 Decimal) bool {
+// Equal returns whether the number represented by d and d2 are equal.
+func (d Decimal) Equal(d2 Decimal) bool {
 	return d.Cmp(d2) == 0
+}
+
+// Equals is an alias for Equal.
+func (d Decimal) Equals(d2 Decimal) bool {
+	return d.Equal(d2)
+}
+
+// IsZero returns true if the number represented by d is zero.
+func (d Decimal) IsZero() bool {
+	if d.value == nil {
+		return true
+	}
+	return d.value.Cmp()
+	return d.value.Sign() == 0
 }
 
 // Exponent returns the exponent, or scale component of the decimal.
@@ -289,9 +320,9 @@ func (d Decimal) Float64() (f float64, exact bool) {
 	return d.Rat().Float64()
 }
 
-// StringScaled first scales the decimal then calls .String() on it.
+// StringScaled first scales the decimal then calls .StringFixed() on it.
 func (d Decimal) StringScaled(exp int32) string {
-	return d.rescale(exp).String()
+	return d.rescale(exp).StringFixed()
 }
 
 // Truncate truncates off digits from the number, without rounding.
@@ -308,13 +339,13 @@ func (d Decimal) Truncate(precision int32) Decimal {
 func (d *Decimal) UnmarshalJSON(decimalBytes []byte) error {
 	str, err := unquoteIfQuoted(decimalBytes)
 	if err != nil {
-		return fmt.Errorf("Error decoding string '%s': %s", decimalBytes, err)
+		return fmt.Errorf("error decoding string '%s': %s", decimalBytes, err)
 	}
 
 	decimal, err := d.Context.NewFromString(str)
 	*d = decimal
 	if err != nil {
-		return fmt.Errorf("Error decoding string '%s': %s", str, err)
+		return fmt.Errorf("error decoding string '%s': %s", str, err)
 	}
 	return nil
 }
@@ -344,7 +375,7 @@ func (d *Decimal) UnmarshalText(text []byte) error {
 	dec, err := d.Context.NewFromString(str)
 	*d = dec
 	if err != nil {
-		return fmt.Errorf("Error decoding string '%s': %s", str, err)
+		return fmt.Errorf("error decoding string '%s': %s", str, err)
 	}
 
 	return nil
@@ -381,6 +412,11 @@ func NewFromRat(value *big.Rat) Decimal {
 	return DefaultContext.NewFromRat(value)
 }
 
+// NewFromInt converts an int64 to Decimal using the default context.
+func NewFromInt(value int64) Decimal {
+	return DefaultContext.New(value, 0)
+}
+
 // NewFromFloat converts a float64 to Decimal using the default context.
 func NewFromFloat(value float64) (Decimal, error) {
 	return DefaultContext.NewFromFloat(value)
@@ -409,7 +445,7 @@ func min(x, y int32) int32 {
 func unquoteIfQuoted(value interface{}) (string, error) {
 	bytes, ok := value.([]byte)
 	if !ok {
-		return "", fmt.Errorf("Could not convert value '%+v' to byte array",
+		return "", fmt.Errorf("could not convert value '%+v' to byte array",
 			value)
 	}
 
