@@ -37,7 +37,7 @@ var (
 // Decimal represents a fixed-point decimal. It is immutable.
 // number = value * 10 ^ exp
 type Decimal struct {
-	Context
+	*Context
 
 	value *big.Int
 
@@ -158,6 +158,9 @@ func (d *Decimal) ensureInitialized() {
 	if d.value == nil {
 		d.value = new(big.Int)
 	}
+	if d.Context == nil {
+		d.Context = DefaultContext
+	}
 }
 
 // Add returns d + d2.
@@ -219,6 +222,7 @@ func (d Decimal) Mul(d2 Decimal) Decimal {
 // Div returns a / b. If it doesn't divide exactly, the result will have
 // DivisionPrecision digits after the decimal point.
 func (a Decimal) Div(b Decimal) Decimal {
+	a.ensureInitialized()
 	if a.value.Cmp(zeroInt) == 0 {
 		return a.Context.Zero()
 	}
@@ -336,6 +340,7 @@ func (d Decimal) Truncate(precision int32) Decimal {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (d *Decimal) UnmarshalJSON(decimalBytes []byte) error {
+	d.ensureInitialized()
 	str, err := unquoteIfQuoted(decimalBytes)
 	if err != nil {
 		return fmt.Errorf("error decoding string '%s': %s", decimalBytes, err)
@@ -357,6 +362,7 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 
 // Scan implements the sql.Scanner interface for database deserialization.
 func (d *Decimal) Scan(value interface{}) error {
+	d.ensureInitialized()
 	str, err := unquoteIfQuoted(value)
 	if err != nil {
 		return err
@@ -369,6 +375,7 @@ func (d *Decimal) Scan(value interface{}) error {
 // UnmarshalText implements the encoding.TextUnmarshaler interface for XML
 // deserialization.
 func (d *Decimal) UnmarshalText(text []byte) error {
+	d.ensureInitialized()
 	str := string(text)
 
 	dec, err := d.Context.NewFromString(str)

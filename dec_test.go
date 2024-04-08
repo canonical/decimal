@@ -96,7 +96,7 @@ func NewTest(t *testing.T, context *decimal.Context, line string) (*Test, *decim
 				t.Fatalf("failed to convert precision %v %v", line, err)
 			}
 			ctx := decimal.NewContext(int32(precision))
-			return nil, &ctx
+			return nil, ctx
 		}
 		return nil, nil
 	}
@@ -122,7 +122,7 @@ func ReadTests(t *testing.T, filename string) []*Test {
 	scanner := bufio.NewScanner(reader)
 
 	tests := []*Test{}
-	currentContext := &decimal.DefaultContext
+	currentContext := decimal.DefaultContext
 	for scanner.Scan() {
 		test, newContext := NewTest(t, currentContext, scanner.Text())
 		if test != nil {

@@ -1,6 +1,8 @@
 package decimal_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"math"
 	"testing"
 
@@ -171,7 +173,7 @@ func TestSub(t *testing.T) {
 			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
-			t.Errorf("context not maintainted during operation")
+			t.Errorf("context not maintained during operation")
 		}
 
 		// Run same test with different context.
@@ -215,7 +217,7 @@ func TestMul(t *testing.T) {
 			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
-			t.Errorf("context not maintainted during operation")
+			t.Errorf("context not maintained during operation")
 		}
 
 		// Run same test with different context.
@@ -273,7 +275,7 @@ func TestDecimalDiv(t *testing.T) {
 			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
 		}
 		if c.Context != a.Context {
-			t.Errorf("context not maintainted during operation")
+			t.Errorf("context not maintained during operation")
 		}
 
 		// Run same test with different context.
@@ -311,6 +313,35 @@ func TestUninitialized(t *testing.T) {
 		}
 		if d.Exponent() != 0 {
 			t.Errorf("a.Exponent() != 0")
+		}
+	}
+}
+
+func TestMarshalUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		num      decimal.Decimal
+		expected string
+	}{
+		{testCtx.MustNewFromString("1.234567"), "1.234567"},
+		{decimal.New(12345678987654321, -16), "1.2345678987654321"},
+	}
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		str, err := json.Marshal(test.num)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if string(str) != fmt.Sprintf(`"%s"`, test.expected) {
+			t.Errorf("expected %s got %s", test.expected, string(str))
+		}
+		num2 := decimal.Decimal{}
+		err = json.Unmarshal(str, &num2)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if test.num.Cmp(num2) != 0 {
+			t.Errorf("expected %v got %v", test.num, num2)
 		}
 	}
 }
