@@ -274,6 +274,39 @@ func (d Decimal) Cmp(d2 Decimal) int {
 	return rd.value.Cmp(rd2.value)
 }
 
+// GreaterThan returns true if d is greater than d2, else false.
+func (d Decimal) GreaterThan(d2 Decimal) bool {
+	if d.Cmp(d2) == 1 {
+		return true
+	}
+	return false
+}
+
+// GreaterThanOrEquals returns true if d is greater than or equal to d2, else
+// false.
+func (d Decimal) GreaterThanOrEquals(d2 Decimal) bool {
+	if d.Cmp(d2) >= 0 {
+		return true
+	}
+	return false
+}
+
+// LessThan returns true if d is less than d2, else false.
+func (d Decimal) LessThan(d2 Decimal) bool {
+	if d.Cmp(d2) == -1 {
+		return true
+	}
+	return false
+}
+
+// LessThanOrEquals returns true if d is less than or equal to d2, else false.
+func (d Decimal) LessThanOrEquals(d2 Decimal) bool {
+	if d.Cmp(d2) <= 0 {
+		return true
+	}
+	return false
+}
+
 // Equal returns whether the number represented by d and d2 are equal.
 func (d Decimal) Equal(d2 Decimal) bool {
 	return d.Cmp(d2) == 0

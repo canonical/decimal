@@ -385,7 +385,134 @@ func TestCmp(t *testing.T) {
 		if r != test.expected {
 			t.Errorf("comparing %s and %s expected %d, got %d", a, b, test.expected, r)
 		}
+	}
+}
 
+func TestGreaterThan(t *testing.T) {
+	tests := []struct {
+		aVal     int64
+		aExp     int32
+		bVal     int64
+		bExp     int32
+		expected bool
+	}{
+		{123, 3, -1234, 2, true},
+		{123, 3, 1234, 2, false},
+		{1230, 2, 123, 3, false},
+		{1, -12, 2, -12, false}, // equal due to rounding
+	}
+
+	ctx2 := decimal.NewContext(10)
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		a := testCtx.New(test.aVal, test.aExp)
+		b := testCtx.New(test.bVal, test.bExp)
+		r := a.GreaterThan(b)
+		if r != test.expected {
+			t.Errorf("checking if %s > %s, expected %t, got %t", a, b, test.expected, r)
+		}
+		b = ctx2.New(test.bVal, test.bExp)
+		r = a.GreaterThan(b)
+		if r != test.expected {
+			t.Errorf("checking if %s > %s, expected %t, got %t", a, b, test.expected, r)
+		}
+	}
+}
+
+func TestGreaterThanOrEquals(t *testing.T) {
+	tests := []struct {
+		aVal     int64
+		aExp     int32
+		bVal     int64
+		bExp     int32
+		expected bool
+	}{
+		{123, 3, -1234, 2, true},
+		{123, 3, 1234, 2, false},
+		{1230, 2, 123, 3, true},
+		{1, -12, 2, -12, true}, // equal due to rounding
+	}
+
+	ctx2 := decimal.NewContext(10)
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		a := testCtx.New(test.aVal, test.aExp)
+		b := testCtx.New(test.bVal, test.bExp)
+		r := a.GreaterThanOrEquals(b)
+		if r != test.expected {
+			t.Errorf("checking if %s >= %s, expected %t, got %t", a, b, test.expected, r)
+		}
+		b = ctx2.New(test.bVal, test.bExp)
+		r = a.GreaterThanOrEquals(b)
+		if r != test.expected {
+			t.Errorf("checking if %s >= %s, expected %t, got %t", a, b, test.expected, r)
+		}
+	}
+}
+
+func TestLessThan(t *testing.T) {
+	tests := []struct {
+		aVal     int64
+		aExp     int32
+		bVal     int64
+		bExp     int32
+		expected bool
+	}{
+		{123, 3, -1234, 2, false},
+		{123, 3, 1234, 2, true},
+		{1230, 2, 123, 3, false},
+		{1, -12, 2, -12, false}, // equal due to rounding
+	}
+
+	ctx2 := decimal.NewContext(10)
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		a := testCtx.New(test.aVal, test.aExp)
+		b := testCtx.New(test.bVal, test.bExp)
+		r := a.LessThan(b)
+		if r != test.expected {
+			t.Errorf("checking if %s < %s, expected %t, got %t", a, b, test.expected, r)
+		}
+		b = ctx2.New(test.bVal, test.bExp)
+		r = a.LessThan(b)
+		if r != test.expected {
+			t.Errorf("checking if %s < %s, expected %t, got %t", a, b, test.expected, r)
+		}
+	}
+}
+
+func TestLessThanOrEquals(t *testing.T) {
+	tests := []struct {
+		aVal     int64
+		aExp     int32
+		bVal     int64
+		bExp     int32
+		expected bool
+	}{
+		{123, 3, -1234, 2, false},
+		{123, 3, 1234, 2, true},
+		{1230, 2, 123, 3, true},
+		{1, -12, 2, -12, true}, // equal due to rounding
+	}
+
+	ctx2 := decimal.NewContext(10)
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		a := testCtx.New(test.aVal, test.aExp)
+		b := testCtx.New(test.bVal, test.bExp)
+		r := a.LessThanOrEquals(b)
+		if r != test.expected {
+			t.Errorf("checking if %s <= %s, expected %t, got %t", a, b, test.expected, r)
+		}
+		b = ctx2.New(test.bVal, test.bExp)
+		r = a.LessThanOrEquals(b)
+		if r != test.expected {
+			t.Errorf("checking if %s <= %s, expected %t, got %t", a, b, test.expected, r)
+		}
 	}
 }
 
