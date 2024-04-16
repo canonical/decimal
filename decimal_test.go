@@ -385,7 +385,79 @@ func TestCmp(t *testing.T) {
 		if r != test.expected {
 			t.Errorf("comparing %s and %s expected %d, got %d", a, b, test.expected, r)
 		}
+	}
+}
 
+func TestComparisonMethods(t *testing.T) {
+	type cmpFunc struct {
+		f      func(d1, d2 decimal.Decimal) bool
+		symbol string
+	}
+	gt := cmpFunc{
+		f:      func(d1, d2 decimal.Decimal) bool { return d1.GT(d2) },
+		symbol: ">",
+	}
+	gte := cmpFunc{
+		f:      func(d1, d2 decimal.Decimal) bool { return d1.GTE(d2) },
+		symbol: ">=",
+	}
+	lt := cmpFunc{
+		f:      func(d1, d2 decimal.Decimal) bool { return d1.LT(d2) },
+		symbol: "<",
+	}
+	lte := cmpFunc{
+		f:      func(d1, d2 decimal.Decimal) bool { return d1.LTE(d2) },
+		symbol: "<=",
+	}
+
+	tests := []struct {
+		cmp      cmpFunc
+		aVal     int64
+		aExp     int32
+		bVal     int64
+		bExp     int32
+		expected bool
+	}{
+		// Test GT.
+		{gt, 123, 3, -1234, 2, true},
+		{gt, 123, 3, 1234, 2, false},
+		{gt, 1230, 2, 123, 3, false},
+		{gt, 1, -12, 2, -12, false}, // equal due to rounding
+
+		// Test GTE.
+		{gte, 123, 3, -1234, 2, true},
+		{gte, 123, 3, 1234, 2, false},
+		{gte, 1230, 2, 123, 3, true},
+		{gte, 1, -12, 2, -12, true}, // equal due to rounding
+
+		// Test LT.
+		{lt, 123, 3, -1234, 2, false},
+		{lt, 123, 3, 1234, 2, true},
+		{lt, 1230, 2, 123, 3, false},
+		{lt, 1, -12, 2, -12, false}, // equal due to rounding
+
+		// Test LTE.
+		{lte, 123, 3, -1234, 2, false},
+		{lte, 123, 3, 1234, 2, true},
+		{lte, 1230, 2, 123, 3, true},
+		{lte, 1, -12, 2, -12, true}, // equal due to rounding
+	}
+
+	ctx2 := decimal.NewContext(10)
+
+	for i, test := range tests {
+		t.Logf("test %d", i)
+		a := testCtx.New(test.aVal, test.aExp)
+		b := testCtx.New(test.bVal, test.bExp)
+		r := test.cmp.f(a, b)
+		if r != test.expected {
+			t.Errorf("checking %s %s %s, expected %t, got %t", a, test.cmp.symbol, b, test.expected, r)
+		}
+		b = ctx2.New(test.bVal, test.bExp)
+		r = test.cmp.f(a, b)
+		if r != test.expected {
+			t.Errorf("checking %s %s %s, expected %t, got %t", a, test.cmp.symbol, b, test.expected, r)
+		}
 	}
 }
 

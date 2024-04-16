@@ -274,6 +274,27 @@ func (d Decimal) Cmp(d2 Decimal) int {
 	return rd.value.Cmp(rd2.value)
 }
 
+// GT returns true if d is greater than d2, else false.
+func (d Decimal) GT(d2 Decimal) bool {
+	return d.Cmp(d2) == 1
+}
+
+// GTE returns true if d is greater than or equal to d2, else
+// false.
+func (d Decimal) GTE(d2 Decimal) bool {
+	return d.Cmp(d2) >= 0
+}
+
+// LT returns true if d is less than d2, else false.
+func (d Decimal) LT(d2 Decimal) bool {
+	return d.Cmp(d2) == -1
+}
+
+// LTE returns true if d is less than or equal to d2, else false.
+func (d Decimal) LTE(d2 Decimal) bool {
+	return d.Cmp(d2) <= 0
+}
+
 // Equal returns whether the number represented by d and d2 are equal.
 func (d Decimal) Equal(d2 Decimal) bool {
 	return d.Cmp(d2) == 0
