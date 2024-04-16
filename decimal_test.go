@@ -408,12 +408,12 @@ func TestGreaterThan(t *testing.T) {
 		t.Logf("test %d", i)
 		a := testCtx.New(test.aVal, test.aExp)
 		b := testCtx.New(test.bVal, test.bExp)
-		r := a.GreaterThan(b)
+		r := a.GT(b)
 		if r != test.expected {
 			t.Errorf("checking if %s > %s, expected %t, got %t", a, b, test.expected, r)
 		}
 		b = ctx2.New(test.bVal, test.bExp)
-		r = a.GreaterThan(b)
+		r = a.GT(b)
 		if r != test.expected {
 			t.Errorf("checking if %s > %s, expected %t, got %t", a, b, test.expected, r)
 		}
@@ -440,12 +440,12 @@ func TestGreaterThanOrEquals(t *testing.T) {
 		t.Logf("test %d", i)
 		a := testCtx.New(test.aVal, test.aExp)
 		b := testCtx.New(test.bVal, test.bExp)
-		r := a.GreaterThanOrEquals(b)
+		r := a.GTE(b)
 		if r != test.expected {
 			t.Errorf("checking if %s >= %s, expected %t, got %t", a, b, test.expected, r)
 		}
 		b = ctx2.New(test.bVal, test.bExp)
-		r = a.GreaterThanOrEquals(b)
+		r = a.GTE(b)
 		if r != test.expected {
 			t.Errorf("checking if %s >= %s, expected %t, got %t", a, b, test.expected, r)
 		}
@@ -472,12 +472,12 @@ func TestLessThan(t *testing.T) {
 		t.Logf("test %d", i)
 		a := testCtx.New(test.aVal, test.aExp)
 		b := testCtx.New(test.bVal, test.bExp)
-		r := a.LessThan(b)
+		r := a.LT(b)
 		if r != test.expected {
 			t.Errorf("checking if %s < %s, expected %t, got %t", a, b, test.expected, r)
 		}
 		b = ctx2.New(test.bVal, test.bExp)
-		r = a.LessThan(b)
+		r = a.LT(b)
 		if r != test.expected {
 			t.Errorf("checking if %s < %s, expected %t, got %t", a, b, test.expected, r)
 		}
@@ -504,12 +504,12 @@ func TestLessThanOrEquals(t *testing.T) {
 		t.Logf("test %d", i)
 		a := testCtx.New(test.aVal, test.aExp)
 		b := testCtx.New(test.bVal, test.bExp)
-		r := a.LessThanOrEquals(b)
+		r := a.LTE(b)
 		if r != test.expected {
 			t.Errorf("checking if %s <= %s, expected %t, got %t", a, b, test.expected, r)
 		}
 		b = ctx2.New(test.bVal, test.bExp)
-		r = a.LessThanOrEquals(b)
+		r = a.LTE(b)
 		if r != test.expected {
 			t.Errorf("checking if %s <= %s, expected %t, got %t", a, b, test.expected, r)
 		}
