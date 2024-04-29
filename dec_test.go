@@ -160,13 +160,16 @@ func runTests(t *testing.T, filename string) {
 }
 
 func TestDecTestAdd(t *testing.T) {
+	t.Parallel()
 	runTests(t, "add.decTest")
 }
 
 func TestDecTestSub(t *testing.T) {
+	t.Parallel()
 	runTests(t, "subtract.decTest")
 }
 
 func TestDecTestMultiply(t *testing.T) {
+	t.Parallel()
 	runTests(t, "multiply.decTest")
 }

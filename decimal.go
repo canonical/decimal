@@ -305,6 +305,22 @@ func (d Decimal) Equals(d2 Decimal) bool {
 	return d.Equal(d2)
 }
 
+// Max returns the maximum of two numbers.
+func (d Decimal) Max(d2 Decimal) Decimal {
+	if d.GTE(d2) {
+		return d
+	}
+	return d2
+}
+
+// Min returns the minimum of two numbers.
+func (d Decimal) Min(d2 Decimal) Decimal {
+	if d.LTE(d2) {
+		return d
+	}
+	return d2
+}
+
 // IsZero returns true if the number represented by d is zero.
 func (d Decimal) IsZero() bool {
 	if d.value == nil {

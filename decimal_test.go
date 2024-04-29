@@ -13,6 +13,7 @@ import (
 var testCtx = decimal.NewContext(6)
 
 func TestDecimalRound(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -49,6 +50,7 @@ func TestDecimalRound(t *testing.T) {
 }
 
 func TestDecimalString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -74,6 +76,7 @@ func TestDecimalString(t *testing.T) {
 }
 
 func TestDecimalStringFixed(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -96,6 +99,7 @@ func TestDecimalStringFixed(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -141,6 +145,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestSub(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -190,6 +195,7 @@ func TestSub(t *testing.T) {
 }
 
 func TestMul(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -234,6 +240,7 @@ func TestMul(t *testing.T) {
 }
 
 func TestDecimalDiv(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -292,6 +299,7 @@ func TestDecimalDiv(t *testing.T) {
 }
 
 func TestUninitialized(t *testing.T) {
+	t.Parallel()
 	a := decimal.Decimal{}
 	b := decimal.Decimal{}
 
@@ -318,6 +326,7 @@ func TestUninitialized(t *testing.T) {
 }
 
 func TestMarshalUnmarshalJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		num      decimal.Decimal
 		expected string
@@ -347,6 +356,7 @@ func TestMarshalUnmarshalJSON(t *testing.T) {
 }
 
 func TestOverflow(t *testing.T) {
+	t.Parallel()
 	c := decimal.NewContext(math.MaxInt32)
 	if !panicMatches(t, func() { c.New(1, math.MinInt32).Mul(c.New(1, math.MinInt32)) }, "exponent .* overflows an int32!") {
 		t.Fatalf("should have gotten an overflow panic")
@@ -357,6 +367,7 @@ func TestOverflow(t *testing.T) {
 }
 
 func TestCmp(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -389,6 +400,7 @@ func TestCmp(t *testing.T) {
 }
 
 func TestComparisonMethods(t *testing.T) {
+	t.Parallel()
 	type cmpFunc struct {
 		f      func(d1, d2 decimal.Decimal) bool
 		symbol string
@@ -461,7 +473,78 @@ func TestComparisonMethods(t *testing.T) {
 	}
 }
 
+func TestMaxMin(t *testing.T) {
+	t.Parallel()
+
+	type method string
+	const (
+		min method = "Min"
+		max method = "Max"
+	)
+
+	tests := []struct {
+		about    string
+		d1, d2   decimal.Decimal
+		method   method
+		expected decimal.Decimal
+	}{{
+		about:    "min compare when d1 < d2",
+		d1:       testCtx.MustNewFromString("2"),
+		d2:       testCtx.MustNewFromString("3"),
+		method:   min,
+		expected: testCtx.MustNewFromString("2"),
+	}, {
+		about:    "min compare when d1 == d2",
+		d1:       testCtx.MustNewFromString("4"),
+		d2:       testCtx.MustNewFromString("4"),
+		method:   min,
+		expected: testCtx.MustNewFromString("4"),
+	}, {
+		about:    "min compare when d1 > d2",
+		d1:       testCtx.MustNewFromString("3"),
+		d2:       testCtx.MustNewFromString("2"),
+		method:   min,
+		expected: testCtx.MustNewFromString("2"),
+	}, {
+		about:    "max compare when d1 > d2",
+		d1:       testCtx.MustNewFromString("7"),
+		d2:       testCtx.MustNewFromString("6"),
+		method:   max,
+		expected: testCtx.MustNewFromString("7"),
+	}, {
+		about:    "max compare when d1 == d2",
+		d1:       testCtx.MustNewFromString("8"),
+		d2:       testCtx.MustNewFromString("8"),
+		method:   max,
+		expected: testCtx.MustNewFromString("8"),
+	}, {
+		about:    "max compare when d1 < d2",
+		d1:       testCtx.MustNewFromString("9"),
+		d2:       testCtx.MustNewFromString("10"),
+		method:   max,
+		expected: testCtx.MustNewFromString("10"),
+	}}
+	for _, test := range tests {
+		t.Run(test.about, func(t *testing.T) {
+			var result decimal.Decimal
+			switch test.method {
+			case min:
+				result = test.d1.Min(test.d2)
+			case max:
+				result = test.d1.Max(test.d2)
+			default:
+				panic("unexpected method value")
+			}
+
+			if !result.Equal(test.expected) {
+				t.Errorf("expected %s, got %s", test.expected.String(), result.String())
+			}
+		})
+	}
+}
+
 func TestAbs(t *testing.T) {
+	t.Parallel()
 	a := testCtx.New(-1234, -4)
 	b := testCtx.New(1234, -4)
 

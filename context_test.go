@@ -10,6 +10,7 @@ import (
 )
 
 func TestSumMaintainsContext(t *testing.T) {
+	t.Parallel()
 	ctx := decimal.NewContext(5)
 
 	a := testCtx.New(1, 1)
@@ -27,6 +28,7 @@ func TestSumMaintainsContext(t *testing.T) {
 }
 
 func TestNegativeContext(t *testing.T) {
+	t.Parallel()
 	ctx := decimal.NewContext(-2)
 
 	a := ctx.MustNewFromString("1234.056")
@@ -36,6 +38,7 @@ func TestNegativeContext(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		value    int64
 		exp      int32
@@ -100,6 +103,7 @@ var stringErrorTests = []string{
 }
 
 func TestNewFromStringError(t *testing.T) {
+	t.Parallel()
 	for i, s := range stringErrorTests {
 		t.Logf("test %d: %q", i, s)
 		_, err := testCtx.NewFromString(s)
@@ -116,6 +120,7 @@ func TestNewFromStringError(t *testing.T) {
 }
 
 func TestMustNewFromString(t *testing.T) {
+	t.Parallel()
 	for src, expect := range stringTests {
 		t.Logf("testing string parsing for %q", src)
 		d := testCtx.MustNewFromString(src)
@@ -206,6 +211,7 @@ func TestMonetaryContextContextFromStringErrors(t *testing.T) {
 }
 
 func TestNewFromRat(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		about  string
 		num    int64
@@ -285,6 +291,7 @@ var floatStringTests = map[float64]string{
 }
 
 func TestNewFromFloat(t *testing.T) {
+	t.Parallel()
 	for flt, expected := range floatStringTests {
 		t.Logf("running test: %f -> %s", flt, expected)
 		d, err := testCtx.NewFromFloat(flt)
@@ -301,6 +308,7 @@ func TestNewFromFloat(t *testing.T) {
 }
 
 func TestNewFromString(t *testing.T) {
+	t.Parallel()
 	for src, expect := range stringTests {
 		t.Logf("testing string parsing for %q", src)
 		d, err := testCtx.NewFromString(src)
@@ -336,6 +344,7 @@ var floatStringTestsLong = map[float64]string{
 }
 
 func TestNewFromFloatDefaultContext(t *testing.T) {
+	t.Parallel()
 	for src, expect := range floatStringTestsLong {
 		t.Logf("testing string parsing for %f", src)
 		d, err := decimal.DefaultContext.NewFromFloat(src)
@@ -348,6 +357,7 @@ func TestNewFromFloatDefaultContext(t *testing.T) {
 }
 
 func TestNewFromFloatError(t *testing.T) {
+	t.Parallel()
 	shouldPanicOn := []float64{
 		math.NaN(),
 		math.Inf(1),
