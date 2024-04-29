@@ -7,7 +7,7 @@ import (
 var testCtx = NewContext(6)
 
 func TestDecimalRescale(t *testing.T) {
-
+	t.Parallel()
 	tests := []struct {
 		value   int64
 		exp     int32
