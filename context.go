@@ -1,3 +1,5 @@
+// Copyright 2015-2024 Canonical Ltd.
+
 package decimal
 
 import (
@@ -12,11 +14,11 @@ import (
 //
 // Each Decimal created using a context retains that context's information:
 //
-//	c := NewContext(4) // context with precision to four decimal places.
-//	d := c.New(15, -1) // 1.5
+//	c := NewContext(4) // Context with precision to four decimal places.
+//	d := c.New(15, -1) // 1.5 = 15 * (10 ^ (-1)).
 //	d = d.Mul(d)
 //
-// It is safe to call all functions with a nil receiver. In this case the
+// It is safe to call all functions with a nil receiver. In this case, the
 // DefaultContext will be used.
 type Context struct {
 	precision int32
@@ -38,8 +40,8 @@ func NewContext(precision int32) *Context {
 }
 
 // Adapt adapts the provided decimal number to the context.
-// If the decimal number has a higher accuracy than that of the context, it will
-// be rounded to the accuracy of the context.
+// If the decimal number has a higher accuracy than that of the context,
+// it will be rounded to the accuracy of the context.
 func (c *Context) Adapt(d Decimal) Decimal {
 	if c == nil {
 		c = DefaultContext
@@ -67,7 +69,7 @@ func (c *Context) Zero() Decimal {
 	return c.New(0, 0)
 }
 
-// New returns a new fixed-point decimal, value * 10 ^ exp.
+// New returns a new fixed-point decimal.
 func (c *Context) New(value int64, exp int32) Decimal {
 	return c.Adapt(Decimal{
 		value: big.NewInt(value),
@@ -90,7 +92,6 @@ func (c *Context) NewFromString(value string) (Decimal, error) {
 		intString = parts[0] + parts[1]
 		expInt := -len(parts[1])
 		if expInt < math.MinInt32 {
-			// NOTE(vadim): I doubt a string could realistically be this long
 			return Decimal{}, fmt.Errorf("can't convert %s to decimal: fractional part too long", value)
 		}
 		exp = int32(expInt)
@@ -141,18 +142,16 @@ func (c *Context) NewFromRat(value *big.Rat) Decimal {
 }
 
 // NewFromFloat converts a float64 to Decimal.
-// NOTE: this will return an error on NaN, +/-inf.
+// Returns an error on NaN, +/-inf.
 func (c *Context) NewFromFloat(value float64) (Decimal, error) {
 	floor := math.Floor(value)
 
-	// fast path, where float is an int
+	// Float is an int, we can use the default constructor.
 	if floor == value && !math.IsInf(value, 0) {
 		return c.New(int64(value), 0), nil
 	}
 
-	// slow path: float is a decimal
-	// HACK(vadim): do this the slow hacky way for now because the logic to
-	// convert a base-2 float to base-10 properly is not trivial
+	// Otherwise, format the float to string.
 	str := strconv.FormatFloat(value, 'f', -1, 64)
 	return c.NewFromString(str)
 }

@@ -1,3 +1,5 @@
+// Copyright 2015-2024 Canonical Ltd.
+
 package decimal_test
 
 import (
@@ -6,14 +8,18 @@ import (
 	"math"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
+
 	"github.com/canonical/decimal"
 )
 
-// A decimal context for testing with a sane number of decimal places.
+// testCtx is a decimal context for testing
+// with a sane number of decimal places.
 var testCtx = decimal.NewContext(6)
 
 func TestDecimalRound(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -31,7 +37,7 @@ func TestDecimalRound(t *testing.T) {
 		{-2245, -3, -2, "-2.250000"},
 		{-3229, -3, -2, "-3.230000"},
 		{-423, 0, 1, "-420.000000"},
-		// Rounding up is a nop
+		// Rounding up is no-op.
 		{1234, -3, -4, "1.234000"},
 		{1245, -3, -4, "1.245000"},
 		{1229, -3, -4, "1.229000"},
@@ -39,18 +45,16 @@ func TestDecimalRound(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		t.Logf("test %d: decimal (%d, %d) rounded to %d",
-			i, test.val, test.exp, test.roundTo)
-		d := testCtx.New(test.val, test.exp).Round(test.roundTo)
-
-		if d.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, d.StringFixed())
-		}
+		c.Run(fmt.Sprintf("test %d: decimal (%d, %d) rounded to %d", i, test.val, test.exp, test.roundTo), func(c *qt.C) {
+			d := testCtx.New(test.val, test.exp).Round(test.roundTo)
+			c.Assert(d.StringFixed(), qt.Equals, test.expected)
+		})
 	}
 }
 
 func TestDecimalString(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -60,23 +64,23 @@ func TestDecimalString(t *testing.T) {
 		{-5, 1, "-50"},
 		{1234, -2, "12.34"},
 		{-4321, -2, "-43.21"},
-		// The precision of this number is 6 fractional digits, hence the result
-		// is 0.
+		// The precision of this number is 6 fractional digits,
+		// hence the result is 0.
 		{1, -7, "0"},
 		{12034, -3, "12.034"},
 	}
 
 	for i, test := range tests {
-		t.Logf("test %d: %d, %d", i, test.val, test.exp)
-		d := testCtx.New(test.val, test.exp)
-		if d.String() != test.expected {
-			t.Fatalf("expected %q, go %q", test.expected, d.String())
-		}
+		c.Run(fmt.Sprintf("test %d: %d, %d", i, test.val, test.exp), func(c *qt.C) {
+			d := testCtx.New(test.val, test.exp)
+			c.Assert(d.String(), qt.Equals, test.expected)
+		})
 	}
 }
 
 func TestDecimalStringFixed(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		val      int64
 		exp      int32
@@ -90,16 +94,16 @@ func TestDecimalStringFixed(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		t.Logf("test %d: %d, %d", i, test.val, test.exp)
-		d := testCtx.New(test.val, test.exp)
-		if d.StringFixed() != test.expected {
-			t.Fatalf("expected %q, go %q", test.expected, d.StringFixed())
-		}
+		c.Run(fmt.Sprintf("test %d: %d, %d", i, test.val, test.exp), func(c *qt.C) {
+			d := testCtx.New(test.val, test.exp)
+			c.Assert(d.StringFixed(), qt.Equals, test.expected)
+		})
 	}
 }
 
 func TestAdd(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -119,33 +123,25 @@ func TestAdd(t *testing.T) {
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			sum := a.Add(b)
+			c.Assert(sum.StringFixed(), qt.Equals, test.expected)
+			c.Assert(sum.Context, qt.Equals, a.Context)
 
-		c := a.Add(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained")
-		}
-
-		// Run same test with different context.
-		b = ctx2.New(test.bVal, test.bExp)
-		c = a.Add(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained")
-		}
-
+			// Run same test with different context.
+			b = ctx2.New(test.bVal, test.bExp)
+			sum = a.Add(b)
+			c.Assert(sum.StringFixed(), qt.Equals, test.expected)
+			c.Assert(sum.Context, qt.Equals, a.Context)
+		})
 	}
 }
 
 func TestSub(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -169,33 +165,25 @@ func TestSub(t *testing.T) {
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			sub := a.Sub(b)
+			c.Assert(sub.StringFixed(), qt.Equals, test.expected)
+			c.Assert(sub.Context, qt.Equals, a.Context)
 
-		c := a.Sub(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained during operation")
-		}
-
-		// Run same test with different context.
-		b = ctx2.New(test.bVal, test.bExp)
-		c = a.Sub(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained")
-		}
-
+			// Run same test with different context.
+			b = ctx2.New(test.bVal, test.bExp)
+			sub = a.Sub(b)
+			c.Assert(sub.StringFixed(), qt.Equals, test.expected)
+			c.Assert(sub.Context, qt.Equals, a.Context)
+		})
 	}
 }
 
 func TestMul(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -214,33 +202,25 @@ func TestMul(t *testing.T) {
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			mul := a.Mul(b)
+			c.Assert(mul.StringFixed(), qt.Equals, test.expected)
+			c.Assert(mul.Context, qt.Equals, a.Context)
 
-		c := a.Mul(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained during operation")
-		}
-
-		// Run same test with different context.
-		b = ctx2.New(test.bVal, test.bExp)
-		c = a.Mul(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained")
-		}
-
+			// Run same test with different context.
+			b = ctx2.New(test.bVal, test.bExp)
+			mul = a.Mul(b)
+			c.Assert(mul.StringFixed(), qt.Equals, test.expected)
+			c.Assert(mul.Context, qt.Equals, a.Context)
+		})
 	}
 }
 
 func TestDecimalDiv(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -273,33 +253,25 @@ func TestDecimalDiv(t *testing.T) {
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			div := a.Div(b)
+			c.Assert(div.StringFixed(), qt.Equals, test.expected)
+			c.Assert(div.Context, qt.Equals, a.Context)
 
-		c := a.Div(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained during operation")
-		}
-
-		// Run same test with different context.
-		b = ctx2.New(test.bVal, test.bExp)
-		c = a.Div(b)
-		if c.StringFixed() != test.expected {
-			t.Errorf("expected %s, got %s", test.expected, c.StringFixed())
-		}
-		if c.Context != a.Context {
-			t.Errorf("context not maintained")
-		}
-
+			// Run same test with different context.
+			b = ctx2.New(test.bVal, test.bExp)
+			div = a.Div(b)
+			c.Assert(div.StringFixed(), qt.Equals, test.expected)
+			c.Assert(div.Context, qt.Equals, a.Context)
+		})
 	}
 }
 
 func TestUninitialized(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	a := decimal.Decimal{}
 	b := decimal.Decimal{}
 
@@ -312,21 +284,17 @@ func TestUninitialized(t *testing.T) {
 	}
 
 	for i, d := range decs {
-		t.Logf("test %d", i)
-		if d.String() != "0" {
-			t.Errorf("expected 0, got %s", d.String())
-		}
-		if d.Cmp(b) != 0 {
-			t.Errorf("%s != %s", d.String(), b.String())
-		}
-		if d.Exponent() != 0 {
-			t.Errorf("a.Exponent() != 0")
-		}
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			c.Assert(d.String(), qt.Equals, "0")
+			c.Assert(d.Cmp(b), qt.Equals, 0)
+			c.Assert(d.Exponent(), qt.Equals, int32(0))
+		})
 	}
 }
 
 func TestMarshalUnmarshalJSON(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		num      decimal.Decimal
 		expected string
@@ -336,38 +304,33 @@ func TestMarshalUnmarshalJSON(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		str, err := json.Marshal(test.num)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if string(str) != fmt.Sprintf(`"%s"`, test.expected) {
-			t.Errorf("expected %s got %s", test.expected, string(str))
-		}
-		num2 := decimal.Decimal{}
-		err = json.Unmarshal(str, &num2)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if test.num.Cmp(num2) != 0 {
-			t.Errorf("expected %v got %v", test.num, num2)
-		}
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			str, err := json.Marshal(test.num)
+			c.Assert(err, qt.IsNil)
+			c.Assert(string(str), qt.Equals, fmt.Sprintf(`"%s"`, test.expected))
+
+			num2 := decimal.Decimal{}
+			err = json.Unmarshal(str, &num2)
+			c.Assert(err, qt.IsNil)
+			c.Assert(test.num.Cmp(num2), qt.Equals, 0)
+		})
 	}
 }
 
 func TestOverflow(t *testing.T) {
-	t.Parallel()
-	c := decimal.NewContext(math.MaxInt32)
-	if !panicMatches(t, func() { c.New(1, math.MinInt32).Mul(c.New(1, math.MinInt32)) }, "exponent .* overflows an int32!") {
-		t.Fatalf("should have gotten an overflow panic")
-	}
-	if !panicMatches(t, func() { c.New(1, math.MaxInt32).Mul(c.New(1, math.MaxInt32)) }, "exponent .* overflows an int32!") {
-		t.Fatalf("should have gotten an overflow panic")
-	}
+	c := qt.New(t)
+	ctx := decimal.NewContext(math.MaxInt32)
+	c.Assert(func() {
+		ctx.New(1, math.MinInt32).Mul(ctx.New(1, math.MinInt32))
+	}, qt.PanicMatches, "exponent .* overflows an int32")
+	c.Assert(func() {
+		ctx.New(1, math.MaxInt32).Mul(ctx.New(1, math.MaxInt32))
+	}, qt.PanicMatches, "exponent .* overflows an int32")
 }
 
 func TestCmp(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		aVal     int64
 		aExp     int32
@@ -378,49 +341,34 @@ func TestCmp(t *testing.T) {
 		{123, 3, -1234, 2, 1},
 		{123, 3, 1234, 2, -1},
 		{1230, 2, 123, 3, 0},
-		{1, -12, 2, -12, 0}, // equal due to rounding
+		{1, -12, 2, -12, 0}, // Equal due to rounding.
 	}
 
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
-		r := a.Cmp(b)
-		if r != test.expected {
-			t.Errorf("comparing %s and %s expected %d, got %d", a, b, test.expected, r)
-		}
-		b = ctx2.New(test.bVal, test.bExp)
-		r = a.Cmp(b)
-		if r != test.expected {
-			t.Errorf("comparing %s and %s expected %d, got %d", a, b, test.expected, r)
-		}
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			r := a.Cmp(b)
+			c.Assert(r, qt.Equals, test.expected)
+
+			// Run the same test with another context.
+			b = ctx2.New(test.bVal, test.bExp)
+			r = a.Cmp(b)
+			c.Assert(r, qt.Equals, test.expected)
+		})
 	}
 }
 
 func TestComparisonMethods(t *testing.T) {
 	t.Parallel()
-	type cmpFunc struct {
-		f      func(d1, d2 decimal.Decimal) bool
-		symbol string
-	}
-	gt := cmpFunc{
-		f:      func(d1, d2 decimal.Decimal) bool { return d1.GT(d2) },
-		symbol: ">",
-	}
-	gte := cmpFunc{
-		f:      func(d1, d2 decimal.Decimal) bool { return d1.GTE(d2) },
-		symbol: ">=",
-	}
-	lt := cmpFunc{
-		f:      func(d1, d2 decimal.Decimal) bool { return d1.LT(d2) },
-		symbol: "<",
-	}
-	lte := cmpFunc{
-		f:      func(d1, d2 decimal.Decimal) bool { return d1.LTE(d2) },
-		symbol: "<=",
-	}
+	c := qt.New(t)
+	type cmpFunc func(d1, d2 decimal.Decimal) bool
+	gt := func(d1, d2 decimal.Decimal) bool { return d1.GT(d2) }
+	gte := func(d1, d2 decimal.Decimal) bool { return d1.GTE(d2) }
+	lt := func(d1, d2 decimal.Decimal) bool { return d1.LT(d2) }
+	lte := func(d1, d2 decimal.Decimal) bool { return d1.LTE(d2) }
 
 	tests := []struct {
 		cmp      cmpFunc
@@ -434,47 +382,47 @@ func TestComparisonMethods(t *testing.T) {
 		{gt, 123, 3, -1234, 2, true},
 		{gt, 123, 3, 1234, 2, false},
 		{gt, 1230, 2, 123, 3, false},
-		{gt, 1, -12, 2, -12, false}, // equal due to rounding
+		{gt, 1, -12, 2, -12, false}, // Equal due to rounding.
 
 		// Test GTE.
 		{gte, 123, 3, -1234, 2, true},
 		{gte, 123, 3, 1234, 2, false},
 		{gte, 1230, 2, 123, 3, true},
-		{gte, 1, -12, 2, -12, true}, // equal due to rounding
+		{gte, 1, -12, 2, -12, true}, // Equal due to rounding.
 
 		// Test LT.
 		{lt, 123, 3, -1234, 2, false},
 		{lt, 123, 3, 1234, 2, true},
 		{lt, 1230, 2, 123, 3, false},
-		{lt, 1, -12, 2, -12, false}, // equal due to rounding
+		{lt, 1, -12, 2, -12, false}, // Equal due to rounding.
 
 		// Test LTE.
 		{lte, 123, 3, -1234, 2, false},
 		{lte, 123, 3, 1234, 2, true},
 		{lte, 1230, 2, 123, 3, true},
-		{lte, 1, -12, 2, -12, true}, // equal due to rounding
+		{lte, 1, -12, 2, -12, true}, // Equal due to rounding.
 	}
 
 	ctx2 := decimal.NewContext(10)
 
 	for i, test := range tests {
-		t.Logf("test %d", i)
-		a := testCtx.New(test.aVal, test.aExp)
-		b := testCtx.New(test.bVal, test.bExp)
-		r := test.cmp.f(a, b)
-		if r != test.expected {
-			t.Errorf("checking %s %s %s, expected %t, got %t", a, test.cmp.symbol, b, test.expected, r)
-		}
-		b = ctx2.New(test.bVal, test.bExp)
-		r = test.cmp.f(a, b)
-		if r != test.expected {
-			t.Errorf("checking %s %s %s, expected %t, got %t", a, test.cmp.symbol, b, test.expected, r)
-		}
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			a := testCtx.New(test.aVal, test.aExp)
+			b := testCtx.New(test.bVal, test.bExp)
+			r := test.cmp(a, b)
+			c.Assert(r, qt.Equals, test.expected)
+
+			// Run the same test with another context.
+			b = ctx2.New(test.bVal, test.bExp)
+			r = test.cmp(a, b)
+			c.Assert(r, qt.Equals, test.expected)
+		})
 	}
 }
 
 func TestMaxMin(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 
 	type method string
 	const (
@@ -525,7 +473,7 @@ func TestMaxMin(t *testing.T) {
 		expected: testCtx.MustNewFromString("10"),
 	}}
 	for _, test := range tests {
-		t.Run(test.about, func(t *testing.T) {
+		c.Run(test.about, func(c *qt.C) {
 			var result decimal.Decimal
 			switch test.method {
 			case min:
@@ -536,20 +484,53 @@ func TestMaxMin(t *testing.T) {
 				panic("unexpected method value")
 			}
 
-			if !result.Equal(test.expected) {
-				t.Errorf("expected %s, got %s", test.expected.String(), result.String())
-			}
+			c.Assert(result.Equal(test.expected), qt.IsTrue)
 		})
 	}
 }
 
 func TestAbs(t *testing.T) {
-	t.Parallel()
 	a := testCtx.New(-1234, -4)
 	b := testCtx.New(1234, -4)
 
 	c := a.Abs()
-	if c.Cmp(b) != 0 {
-		t.Errorf("error")
+	qt.Assert(t, c.Cmp(b), qt.Equals, 0)
+}
+
+func TestStringScaled(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+	tests := []struct {
+		value   int64
+		exp     int32
+		rescale int32
+		before  string
+		after   string
+	}{
+		{1234, -3, -5, "1.234000", "1.234000"},
+		{1234, -3, 0, "1.000000", "1.000000"},
+		{1234, 3, 0, "1234000.000000", "1234000.000000"},
+		{1234, -4, -4, "0.123400", "0.123400"},
+		{1234, 0, 0, "1234.000000", "1234.000000"},
+
+		{-1234, -3, -5, "-1.234000", "-1.234000"},
+		{-1234, -3, 0, "-1.000000", "-1.000000"},
+		{-1234, 3, 0, "-1234000.000000", "-1234000.000000"},
+		{-1234, -4, -4, "-0.123400", "-0.123400"},
+		{-1234, 0, 0, "-1234.000000", "-1234.000000"},
 	}
+
+	for i, test := range tests {
+		c.Run(fmt.Sprintf("test case %d", i), func(c *qt.C) {
+			s2 := testCtx.New(test.value, test.exp).StringScaled(test.rescale)
+			c.Assert(s2, qt.Equals, test.after)
+		})
+	}
+}
+
+func TestTruncatePanic(t *testing.T) {
+	a := testCtx.New(1, 1)
+	qt.Assert(t, func() {
+		a.Truncate(-1)
+	}, qt.PanicMatches, "precision must be non-negative")
 }

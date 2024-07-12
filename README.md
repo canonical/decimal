@@ -1,8 +1,9 @@
 # decimal
 
-Arbitrary-precision fixed-point decimal numbers in go.
+Arbitrary-precision fixed-point decimal numbers in Go.
 
-NOTE: can "only" represent numbers with a maximum of 2^31 digits after the decimal point.
+This library supports numbers with a maximum of 2^31 digits
+after the decimal point.
 
 ## Features
 
@@ -10,7 +11,7 @@ NOTE: can "only" represent numbers with a maximum of 2^31 digits after the decim
  * addition, subtraction, multiplication with no loss of precision
  * division with specified precision
  * database/sql serialization/deserialization
- * json and xml serialization/deserialization
+ * JSON and XML serialization/deserialization
 
 ## Install
 
@@ -22,30 +23,31 @@ Run `go get github.com/canonical/decimal`
 package main
 
 import (
-    "fmt"
-    "github.com/canonical/decimal"
+	"fmt"
+
+	"github.com/canonical/decimal"
 )
 
 func main() {
 	price, err := decimal.NewFromString("136.02")
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 
-	quantity := decimal.NewFromFloat(3)
+	quantity := decimal.MustNewFromFloat(3)
 
-	fee, _ := decimal.NewFromString(".035")
-	taxRate, _ := decimal.NewFromString(".08875")
+	fee := decimal.MustNewFromString(".035")
+	taxRate := decimal.MustNewFromString(".08875")
 
-    subtotal := price.Mul(quantity)
+	subtotal := price.Mul(quantity)
 
-    preTax := subtotal.Mul(fee.Add(decimal.NewFromFloat(1)))
+	preTax := subtotal.Mul(fee.Add(decimal.MustNewFromFloat(1)))
 
-    total := preTax.Mul(taxRate.Add(decimal.NewFromFloat(1)))
+	total := preTax.Mul(taxRate.Add(decimal.MustNewFromFloat(1)))
 
 	fmt.Println("Subtotal:", subtotal)
 	fmt.Println("Pre-tax:", preTax)
-    fmt.Println("Taxes:", total.Sub(preTax))
+	fmt.Println("Taxes:", total.Sub(preTax))
 	fmt.Println("Total:", total)
 	fmt.Println("Tax rate:", total.Sub(preTax).Div(preTax))
 }
@@ -53,9 +55,5 @@ func main() {
 
 ## License
 
-This project is a derivative of work released under an MIT license. All other rights reserved.
-
-This is a heavily modified fork of [fpd.Decimal](https://github.com/oguzbilgic/fpd), which was also released under the MIT License.
-This is a heavily modified fork of [shopspring Decimal](https://github.com/shopspring/decimal), which was also released under the MIT License.
-Copyright 2015 Canonical Ltd. 
-
+This project is a derivative of works released under the MIT license.
+All other rights are reserved. Copyright 2015-2024 Canonical Ltd.
