@@ -1,44 +1,42 @@
+// Copyright 2015-2024 Canonical Ltd.
+
 package decimal_test
 
 import (
+	"fmt"
 	"math"
 	"math/big"
-	"regexp"
 	"testing"
+
+	qt "github.com/frankban/quicktest"
 
 	"github.com/canonical/decimal"
 )
 
 func TestSumMaintainsContext(t *testing.T) {
-	t.Parallel()
+	c := qt.New(t)
 	ctx := decimal.NewContext(5)
 
-	a := testCtx.New(1, 1)
-	b := ctx.New(5, 2)
-
-	c := a.Add(b)
+	a := testCtx.New(1, 1) // 10 = 1 * 10.
+	b := ctx.New(5, 2)     // 500 = 5 * (10 ^ 2).
+	sum := a.Add(b)
 
 	// The context is taken from the first operand.
-	if c.Context != a.Context {
-		t.Fatalf("expected result of sum to maintain context.")
-	}
-	if c.StringFixed() != "510.000000" {
-		t.Fatalf("unexpected result %q", c.StringFixed())
-	}
+	c.Assert(sum.Context, qt.Equals, a.Context)
+	c.Assert(sum.StringFixed(), qt.Equals, "510.000000") // Preserving 6 decimal points from textCtx.
 }
 
 func TestNegativeContext(t *testing.T) {
-	t.Parallel()
-	ctx := decimal.NewContext(-2)
+	c := qt.New(t)
+	ctx := decimal.NewContext(-2) // Precision to hundreds.
 
 	a := ctx.MustNewFromString("1234.056")
-	if a.StringFixed() != "1200" {
-		t.Fatalf("expected '1200', got %s", a.StringFixed())
-	}
+	c.Assert(a.StringFixed(), qt.Equals, "1200")
 }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		value    int64
 		exp      int32
@@ -49,15 +47,12 @@ func TestNew(t *testing.T) {
 		{123456, -6, "0.123456"},
 		{1, -7, "0.000000"},
 	}
-	for i, test := range tests {
-		t.Logf("test %d", i)
-		d := testCtx.New(test.value, test.exp)
-		if d.StringFixed() != test.expected {
-			t.Fatalf("expected %q, got %q", test.expected, d.StringFixed())
-		}
-		if d.Context != testCtx {
-			t.Fatalf("context of decimal does not match creation context")
-		}
+	for idx, test := range tests {
+		c.Run(fmt.Sprintf("test case %d: %s", idx, test.expected), func(c *qt.C) {
+			d := testCtx.New(test.value, test.exp)
+			c.Assert(d.StringFixed(), qt.Equals, test.expected)
+			c.Assert(d.Context, qt.Equals, testCtx)
+		})
 	}
 }
 
@@ -104,72 +99,32 @@ var stringErrorTests = []string{
 
 func TestNewFromStringError(t *testing.T) {
 	t.Parallel()
-	for i, s := range stringErrorTests {
-		t.Logf("test %d: %q", i, s)
-		_, err := testCtx.NewFromString(s)
-		if !errorMatches(t, err, "can't convert .* to decimal.*") {
-			t.Errorf("error expected when parsing %s", s)
-		}
-
-		if !panicMatches(t, func() { testCtx.MustNewFromString(s) }, "can't convert .* to decimal.*") {
-			t.Errorf("expected panic when parsing %s", s)
-		}
-
+	c := qt.New(t)
+	for idx, s := range stringErrorTests {
+		c.Run(fmt.Sprintf("test case %d: %s", idx, s), func(c *qt.C) {
+			_, err := testCtx.NewFromString(s)
+			c.Assert(err, qt.ErrorMatches, "can't convert .* to decimal.*")
+			c.Assert(func() {
+				testCtx.MustNewFromString(s)
+			}, qt.PanicMatches, "can't convert .* to decimal.*")
+		})
 	}
-
 }
 
 func TestMustNewFromString(t *testing.T) {
 	t.Parallel()
-	for src, expect := range stringTests {
-		t.Logf("testing string parsing for %q", src)
-		d := testCtx.MustNewFromString(src)
-		if d.StringFixed() != expect {
-			t.Errorf("expected %s, got %s", expect, d.StringFixed())
-		}
+	c := qt.New(t)
+	for src, expected := range stringTests {
+		c.Run(fmt.Sprintf("test %s -> %s", src, expected), func(c *qt.C) {
+			d := testCtx.MustNewFromString(src)
+			c.Assert(d.StringFixed(), qt.Equals, expected)
+		})
 	}
-}
-
-func errorMatches(t *testing.T, err error, exp string) bool {
-	if err == nil {
-		return false
-	}
-	r := regexp.MustCompile("^" + exp + "$")
-	var ok bool
-	if ok = r.MatchString(err.Error()); !ok {
-		t.Logf("%v does not match %q", err, exp)
-	}
-	return ok
-}
-
-// panicMatches checks if the provided function panics.
-func panicMatches(t *testing.T, f func(), exp string) (ret bool) {
-	ret = false
-	r := regexp.MustCompile("^" + exp + "$")
-	defer func() {
-		if message := recover(); message != nil {
-			switch msg := message.(type) {
-			case error:
-				if ret = r.MatchString(msg.Error()); !ret {
-					t.Logf("%q did not match %q", (message.(error)).Error(), exp)
-				}
-			case string:
-				if ret = r.MatchString(msg); !ret {
-					t.Logf("%q did not match %q", message.(string), exp)
-				}
-			default:
-				ret = false
-			}
-		}
-	}()
-
-	// call the target function
-	f()
-
-	return false
 }
 
 func TestMonetaryContextContextFromString(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
 	tests := map[string]string{
 		"3.141592653589793":   "3.14",
 		"3":                   "3.00",
@@ -184,34 +139,32 @@ func TestMonetaryContextContextFromString(t *testing.T) {
 		"0.1000000000000001":  "0.10",
 	}
 
-	for src, expect := range tests {
-		t.Logf("testing string parsing for %q", src)
-		d, err := decimal.MonetaryContext.NewFromString(src)
-		if err != nil {
-			t.Errorf("error while parsing %s: %v", src, err)
-		} else if d.StringFixed() != expect {
-			t.Errorf("expected %s, got %s", expect, d.StringFixed())
-		}
+	for src, expected := range tests {
+		c.Run(fmt.Sprintf("test %s -> %s", src, expected), func(c *qt.C) {
+			d, err := decimal.MonetaryContext.NewFromString(src)
+			c.Assert(err, qt.IsNil)
+			c.Assert(d.StringFixed(), qt.Equals, expected)
+		})
 	}
 }
 
 func TestMonetaryContextContextFromStringErrors(t *testing.T) {
-	for i, s := range stringErrorTests {
-		t.Logf("test %d: %q", i, s)
-		_, err := decimal.MonetaryContext.NewFromString(s)
-		if !errorMatches(t, err, "can't convert .* to decimal.*") {
-			t.Errorf("error expected when parsing %s", s)
-		}
-
-		if !panicMatches(t, func() { decimal.MonetaryContext.MustNewFromString(s) }, "can't convert .* to decimal.*") {
-			t.Errorf("expected panic when parsing %s", s)
-		}
-
+	t.Parallel()
+	c := qt.New(t)
+	for idx, s := range stringErrorTests {
+		c.Run(fmt.Sprintf("test case %d: %s", idx, s), func(c *qt.C) {
+			_, err := decimal.MonetaryContext.NewFromString(s)
+			c.Assert(err, qt.ErrorMatches, "can't convert .* to decimal.*")
+			c.Assert(func() {
+				decimal.MonetaryContext.MustNewFromString(s)
+			}, qt.PanicMatches, "can't convert .* to decimal.*")
+		})
 	}
 }
 
 func TestNewFromRat(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	tests := []struct {
 		about  string
 		num    int64
@@ -238,12 +191,11 @@ func TestNewFromRat(t *testing.T) {
 		denom:  1,
 		expect: "-15.000000",
 	}}
-	for i, test := range tests {
-		t.Logf("test %d: %s", i, test.about)
-		d := testCtx.NewFromRat(big.NewRat(test.num, test.denom))
-		if d.StringFixed() != test.expect {
-			t.Errorf("expected %q, got %q", test.expect, d.StringFixed())
-		}
+	for _, test := range tests {
+		c.Run(test.about, func(c *qt.C) {
+			d := testCtx.NewFromRat(big.NewRat(test.num, test.denom))
+			c.Assert(d.StringFixed(), qt.Equals, test.expect)
+		})
 	}
 }
 
@@ -292,31 +244,27 @@ var floatStringTests = map[float64]string{
 
 func TestNewFromFloat(t *testing.T) {
 	t.Parallel()
+	c := qt.New(t)
 	for flt, expected := range floatStringTests {
-		t.Logf("running test: %f -> %s", flt, expected)
-		d, err := testCtx.NewFromFloat(flt)
-		if err != nil {
-			t.Errorf("unexpected error %v", err)
-		}
-		if d.StringFixed() != expected {
-			t.Errorf("expected %s, got %s", expected, d.StringFixed())
-		}
-		if d.Context != testCtx {
-			t.Errorf("unknown context value")
-		}
+		c.Run(fmt.Sprintf("test %f -> %s", flt, expected), func(c *qt.C) {
+			d, err := testCtx.NewFromFloat(flt)
+			c.Assert(err, qt.IsNil)
+			c.Assert(d.StringFixed(), qt.Equals, expected)
+			c.Assert(d.Context, qt.Equals, testCtx)
+		})
 	}
 }
 
 func TestNewFromString(t *testing.T) {
 	t.Parallel()
-	for src, expect := range stringTests {
-		t.Logf("testing string parsing for %q", src)
-		d, err := testCtx.NewFromString(src)
-		if err != nil {
-			t.Errorf("error while parsing %s", src)
-		} else if d.StringFixed() != expect {
-			t.Errorf("expected %s, got %s", expect, d.StringFixed())
-		}
+	c := qt.New(t)
+	for src, expected := range stringTests {
+		c.Run(fmt.Sprintf("test %s -> %s", src, expected), func(c *qt.C) {
+			d, err := testCtx.NewFromString(src)
+			c.Assert(err, qt.IsNil)
+			c.Assert(d.StringFixed(), qt.Equals, expected)
+			c.Assert(d.Context, qt.Equals, testCtx)
+		})
 	}
 }
 
@@ -345,37 +293,31 @@ var floatStringTestsLong = map[float64]string{
 
 func TestNewFromFloatDefaultContext(t *testing.T) {
 	t.Parallel()
-	for src, expect := range floatStringTestsLong {
-		t.Logf("testing string parsing for %f", src)
-		d, err := decimal.DefaultContext.NewFromFloat(src)
-		if err != nil {
-			t.Errorf("error while parsing %f", src)
-		} else if d.StringFixed() != expect {
-			t.Errorf("expected %s, got %s", expect, d.StringFixed())
-		}
+	c := qt.New(t)
+	for src, expected := range floatStringTestsLong {
+		c.Run(fmt.Sprintf("test %f -> %s", src, expected), func(c *qt.C) {
+			d, err := decimal.DefaultContext.NewFromFloat(src)
+			c.Assert(err, qt.IsNil)
+			c.Assert(d.StringFixed(), qt.Equals, expected)
+		})
 	}
 }
 
 func TestNewFromFloatError(t *testing.T) {
-	t.Parallel()
+	c := qt.New(t)
 	shouldPanicOn := []float64{
 		math.NaN(),
 		math.Inf(1),
 		math.Inf(-1),
 	}
 
-	for i, flt := range shouldPanicOn {
-		t.Logf("test %d: %f with NewFromFloat", i, flt)
-		_, err := testCtx.NewFromFloat(flt)
-		if !errorMatches(t, err, `can't convert .* to decimal`) {
-			t.Fatalf("expected error when creating a Decimal from %v", flt)
-		}
-
-		t.Logf("test %d: %f with MustNewFromFloat", i, flt)
-		var d decimal.Decimal
-
-		if !panicMatches(t, func() { d = testCtx.MustNewFromFloat(flt) }, `can't convert .* to decimal`) {
-			t.Fatalf("expected panic when creating a Decimal from %v, got %v instead", flt, d.StringFixed())
-		}
+	for idx, flt := range shouldPanicOn {
+		c.Run(fmt.Sprintf("test case %d", idx), func(c *qt.C) {
+			_, err := testCtx.NewFromFloat(flt)
+			c.Assert(err, qt.ErrorMatches, "can't convert .* to decimal")
+			c.Assert(func() {
+				testCtx.MustNewFromFloat(flt)
+			}, qt.PanicMatches, "can't convert .* to decimal")
+		})
 	}
 }

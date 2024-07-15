@@ -1,3 +1,7 @@
+Copyright 2015-2024 Canonical Ltd.
+
+- Based on https://github.com/shopspring/decimal, which has the following license:
+"""
 The MIT License (MIT)
 
 Copyright (c) 2015 Spring, Inc.

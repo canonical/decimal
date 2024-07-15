@@ -1,3 +1,5 @@
+// Copyright 2015-2024 Canonical Ltd.
+
 // Package decimal implements an arbitrary precision fixed-point decimal.
 //
 // To use as part of a struct:
@@ -11,9 +13,9 @@
 // The best way to create a new Decimal is to use decimal.NewFromString, ex:
 //
 //	n, err := decimal.NewFromString("-123.4567")
-//	n.String() // output: "-123.4567"
+//	n.String() // Output: "-123.4567"
 //
-// NOTE: This can "only" represent numbers with a maximum of 2^31 digits
+// This library supports numbers with a maximum of 2^31 digits
 // after the decimal point.
 package decimal
 
@@ -35,13 +37,14 @@ var (
 )
 
 // Decimal represents a fixed-point decimal. It is immutable.
-// number = value * 10 ^ exp
+// The actual number is equal to value * (10 ^ exp).
 type Decimal struct {
 	*Context
 
 	value *big.Int
 
-	// NOTE(vadim): this must be an int32, because we cast it to float64 during
+	// exp represents the number exponent in base-10 numbers.
+	// This must be an int32, because we cast it to float64 during
 	// calculations. If exp is 64 bit, we might lose precision.
 	// If we cared about being able to represent every possible decimal, we
 	// could make exp a *big.Int but it would hurt performance and numbers
@@ -82,6 +85,8 @@ func (d Decimal) StringFixed() string {
 	return d.string(false)
 }
 
+// string returns the string representation of the decimal
+// with the optional trimming of needless zeros after comma.
 func (d Decimal) string(trim bool) string {
 	d.ensureInitialized()
 
@@ -133,10 +138,10 @@ func (d Decimal) string(trim bool) string {
 // rescale returns a rescaled version of the decimal. Returned
 // decimal may be less precise if the given exponent is bigger
 // than the initial exponent of the Decimal.
-// NOTE: this will truncate, NOT round
+// This method truncates, does not round.
 func (d Decimal) rescale(exp int32) Decimal {
 	d.ensureInitialized()
-	// NOTE(vadim): must convert exps to float64 before - to prevent overflow
+	// Converting exps to float64 now to prevent overflow.
 	diff := math.Abs(float64(exp) - float64(d.exp))
 	value := new(big.Int).Set(d.value)
 
@@ -154,6 +159,9 @@ func (d Decimal) rescale(exp int32) Decimal {
 	}
 }
 
+// ensureInitialized ensures Context and
+// value fields are not nil. If they are,
+// we set the default value and DefaultContext.
 func (d *Decimal) ensureInitialized() {
 	if d.value == nil {
 		d.value = new(big.Int)
@@ -207,9 +215,9 @@ func (d Decimal) Mul(d2 Decimal) Decimal {
 
 	expInt64 := int64(d.exp) + int64(d2.exp)
 	if expInt64 > math.MaxInt32 || expInt64 < math.MinInt32 {
-		// NOTE(vadim): better to panic than give incorrect results, as
-		// Decimals are usually used for money
-		panic(fmt.Sprintf("exponent %v overflows an int32!", expInt64))
+		// We cannot guarantee precision outside of 32 bytes,
+		// so we panic.
+		panic(fmt.Sprintf("exponent %d overflows an int32", expInt64))
 	}
 
 	d3Value := new(big.Int).Mul(d.value, d2.value)
@@ -235,9 +243,9 @@ func (a Decimal) Div(b Decimal) Decimal {
 	// Power of 10 needed for division with required precision.
 	pwrFloat := float64(precision) + 1 + float64(a.exp) - float64(b.exp)
 	if math.IsNaN(pwrFloat) || math.IsInf(pwrFloat, 0) {
-		panic(fmt.Sprintf("can't convert %v to decimal", pwrFloat))
+		panic(fmt.Sprintf("can't convert %f to decimal", pwrFloat))
 	}
-	pwr := round(pwrFloat)
+	pwr := int64(math.Round(pwrFloat))
 	exp := big.NewInt(0).Exp(tenInt, big.NewInt(int64(pwr)), nil)
 
 	num.Mul(num, exp)
@@ -355,7 +363,7 @@ func (d Decimal) Rat() *big.Rat {
 
 // Float64 returns the nearest float64 value for d and a bool indicating
 // whether f represents d exactly.
-// For more details, see the documentation for big.Rat.Float64
+// For more details, see the documentation for big.Rat.Float64.
 func (d Decimal) Float64() (f float64, exact bool) {
 	return d.Rat().Float64()
 }
@@ -366,8 +374,13 @@ func (d Decimal) StringScaled(exp int32) string {
 }
 
 // Truncate truncates off digits from the number, without rounding.
-// NOTE: precision is the last digit that will not be truncated (should be >= 0)
+// Precision is the last digit that will not be truncated (must be >= 0).
+//
+// Panics on negative precision provided.
 func (d Decimal) Truncate(precision int32) Decimal {
+	if precision < 0 {
+		panic("precision must be non-negative")
+	}
 	d.ensureInitialized()
 	if precision >= 0 && -precision > d.exp {
 		return d.rescale(-precision)
@@ -380,13 +393,12 @@ func (d *Decimal) UnmarshalJSON(decimalBytes []byte) error {
 	d.ensureInitialized()
 	str, err := unquoteIfQuoted(decimalBytes)
 	if err != nil {
-		return fmt.Errorf("error decoding string '%s': %s", decimalBytes, err)
+		return fmt.Errorf("error decoding string '%s': %v", decimalBytes, err)
 	}
 
-	decimal, err := d.Context.NewFromString(str)
-	*d = decimal
+	*d, err = d.Context.NewFromString(str)
 	if err != nil {
-		return fmt.Errorf("error decoding string '%s': %s", str, err)
+		return fmt.Errorf("error decoding string '%s': %v", str, err)
 	}
 	return nil
 }
@@ -398,7 +410,7 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 }
 
 // Scan implements the sql.Scanner interface for database deserialization.
-func (d *Decimal) Scan(value interface{}) error {
+func (d *Decimal) Scan(value any) error {
 	d.ensureInitialized()
 	str, err := unquoteIfQuoted(value)
 	if err != nil {
@@ -415,10 +427,10 @@ func (d *Decimal) UnmarshalText(text []byte) error {
 	d.ensureInitialized()
 	str := string(text)
 
-	dec, err := d.Context.NewFromString(str)
-	*d = dec
+	var err error
+	*d, err = d.Context.NewFromString(str)
 	if err != nil {
-		return fmt.Errorf("error decoding string '%s': %s", str, err)
+		return fmt.Errorf("error decoding string '%s': %v", str, err)
 	}
 
 	return nil
@@ -435,17 +447,19 @@ func (d Decimal) Value() (driver.Value, error) {
 	return d.String(), nil
 }
 
-// New returns a new fixed-point decimal, value * 10 ^ exp. Using the default context.
+// New returns a new fixed-point decimal using the default context.
 func New(value int64, exp int32) Decimal {
 	return DefaultContext.New(value, exp)
 }
 
-// NewFromString parses a string representation into a decimal using the default context.
+// NewFromString parses a string representation into a decimal
+// using the default context.
 func NewFromString(value string) (Decimal, error) {
 	return DefaultContext.NewFromString(value)
 }
 
-// MustNewFromString parses the string representation into a decimal using the default representation or panics.
+// MustNewFromString parses the string representation into a decimal
+// using the default representation or panics.
 func MustNewFromString(value string) Decimal {
 	return DefaultContext.MustNewFromString(value)
 }
@@ -465,19 +479,14 @@ func NewFromFloat(value float64) (Decimal, error) {
 	return DefaultContext.NewFromFloat(value)
 }
 
-// MustNewFromFloat creates a decimal number equivalent to the provided float or
-// panics. It uses the default context.
+// MustNewFromFloat creates a decimal number equivalent to the provided float
+// using the default context, or panics on error.
 func MustNewFromFloat(value float64) Decimal {
 	return DefaultContext.MustNewFromFloat(value)
 }
 
-func round(n float64) int64 {
-	if n < 0 {
-		return int64(n - 0.5)
-	}
-	return int64(n + 0.5)
-}
-
+// min is handwritten equivalent of math.Min,
+// but with int32 instead of float64.
 func min(x, y int32) int32 {
 	if x >= y {
 		return y
@@ -485,14 +494,18 @@ func min(x, y int32) int32 {
 	return x
 }
 
-func unquoteIfQuoted(value interface{}) (string, error) {
+// unquoteIfQuoted tries to parse value as a byte array
+// and returns a string representation of it without quotes,
+// if they are present.
+//
+// Returns an error if value cannot be represented as a byte array.
+func unquoteIfQuoted(value any) (string, error) {
 	bytes, ok := value.([]byte)
 	if !ok {
-		return "", fmt.Errorf("could not convert value '%+v' to byte array",
-			value)
+		return "", fmt.Errorf("could not convert value '%+v' to byte array", value)
 	}
 
-	// If the amount is quoted, strip the quotes
+	// If the amount is quoted, strip the quotes.
 	if len(bytes) > 2 && bytes[0] == '"' && bytes[len(bytes)-1] == '"' {
 		bytes = bytes[1 : len(bytes)-1]
 	}

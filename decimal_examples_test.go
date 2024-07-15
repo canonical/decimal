@@ -1,3 +1,5 @@
+// Copyright 2015-2024 Canonical Ltd.
+
 package decimal_test
 
 import (
@@ -9,7 +11,7 @@ import (
 
 func ExampleNewContext() {
 	context := decimal.NewContext(6)
-	fmt.Printf("%d\n", context.Precision())
+	fmt.Println(context.Precision())
 	d := context.New(6, -5)
 	fmt.Println(d.StringFixed())
 	// Output:

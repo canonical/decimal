@@ -1,0 +1,24 @@
+name: Lint and test
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, X64, jammy, large]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: sudo snap install go --channel=1.21/stable --classic
+
+    - name: Get
+      run: go get ./...
+
+    - name: Run linters and vetters
+      run: ./scripts/lint.sh
+
+    - name: Test
+      run: go test -v ./...
