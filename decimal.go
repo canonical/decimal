@@ -500,8 +500,13 @@ func min(x, y int32) int32 {
 //
 // Returns an error if value cannot be represented as a byte array.
 func unquoteIfQuoted(value any) (string, error) {
-	bytes, ok := value.([]byte)
-	if !ok {
+	var bytes []byte
+	switch t := value.(type) {
+	case []byte:
+		bytes = t
+	case string:
+		bytes = []byte(t)
+	default:
 		return "", fmt.Errorf("could not convert value '%+v' to byte array", value)
 	}
 

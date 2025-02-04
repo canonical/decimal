@@ -534,3 +534,17 @@ func TestTruncatePanic(t *testing.T) {
 		a.Truncate(-1)
 	}, qt.PanicMatches, "precision must be non-negative")
 }
+
+func TestScan(t *testing.T) {
+	t.Parallel()
+	c := qt.New(t)
+	d := decimal.MustNewFromString("123.01")
+	value, err := d.Value()
+	c.Assert(err, qt.IsNil)
+
+	// Serialized value must be able to be scanned back properly.
+	got := new(decimal.Decimal)
+	err = got.Scan(value)
+	c.Assert(err, qt.IsNil)
+	c.Assert(got, qt.DeepEquals, &d)
+}
