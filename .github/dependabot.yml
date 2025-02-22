@@ -6,7 +6,6 @@ updates:
       - "/"
     schedule:
       interval: "weekly"
-    vendor: true # Check vendored dependencies as well.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
