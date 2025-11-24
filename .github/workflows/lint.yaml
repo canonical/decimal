@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: [self-hosted, linux, X64, jammy, large]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install dependencies
       run: sudo snap install go --channel=1.21/stable --classic
