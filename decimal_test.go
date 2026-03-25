@@ -46,8 +46,11 @@ func TestDecimalRound(t *testing.T) {
 
 	for i, test := range tests {
 		c.Run(fmt.Sprintf("test %d: decimal (%d, %d) rounded to %d", i, test.val, test.exp, test.roundTo), func(c *qt.C) {
-			d := testCtx.New(test.val, test.exp).Round(test.roundTo)
+			original := testCtx.New(test.val, test.exp)
+			originalStr := original.StringFixed()
+			d := original.Round(test.roundTo)
 			c.Assert(d.StringFixed(), qt.Equals, test.expected)
+			c.Assert(original.StringFixed(), qt.Equals, originalStr)
 		})
 	}
 }
