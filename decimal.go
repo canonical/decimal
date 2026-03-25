@@ -68,6 +68,7 @@ func (d Decimal) Round(exp int32) Decimal {
 	rounding.Mul(rounding, big.NewInt(int64(d.value.Sign()*5)))
 
 	rounded := d
+	rounded.value = new(big.Int).Set(d.value)
 	rounded.value.Add(rounded.value, rounding)
 
 	return rounded.rescale(exp)
