@@ -1,0 +1,53 @@
+# Run static application security testing (SAST)
+
+# If this job fails in CI, you can run the hooks locally, e.g.:
+# pip install pre-commit  # or: brew install pre-commit
+# pre-commit install
+# pre-commit run --all-files
+# git add .
+# git commit -m "Fix pre-commit issues"
+# git push
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 2 * * 1'  # every Monday at 02:00 UTC, to keep SHA pins current
+  workflow_dispatch:  # allow manual runs to refresh/verify SHA pins
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gosec:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run gosec
+        run: make lint-gosec
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.x'
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Run pre-commit
+        run: pre-commit run --all-files
