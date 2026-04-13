@@ -1,0 +1,36 @@
+rules:
+  # canonical/cs-github-actions is a private internal canonical repository
+  # and cannot be pinned to a full SHA hash without authentication. Allow
+  # ref-pinning for this repository.
+  unpinned-uses:
+    config:
+      policies:
+        canonical/cs-github-actions/*: ref-pin
+
+  # secrets-outside-env requires dedicated GitHub environments, which are
+  # configured in repository/organization settings rather than in code.
+  # This will become informational-only in zizmor >= v1.24.0.
+  secrets-outside-env:
+    ignore:
+
+  # pr-comment.yml uses workflow_run intentionally to safely post PR comments
+  # from a privileged context after downloading artifacts from an unprivileged
+  # context. The workflow does not use any repository secrets.
+  dangerous-triggers:
+    ignore:
+
+  # deploy-testing-nightly.yml uses secrets: inherit intentionally to pass all
+  # secrets to the reusable deploy.yml workflow.
+  secrets-inherit:
+    ignore:
+
+  # update-juju-secret.yml uses secrets[inputs.github_secret_name] to
+  # dynamically access a secret by name, which is the intended design.
+  overprovisioned-secrets:
+    ignore:
+
+  # excessive-permissions warnings are expected for jobs that rely on the
+  # default (restricted) GITHUB_TOKEN permissions rather than declaring an
+  # explicit permissions block.
+  excessive-permissions:
+    ignore:
