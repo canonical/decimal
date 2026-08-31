@@ -1,12 +1,4 @@
 rules:
-  # canonical/cs-github-actions is a private internal canonical repository
-  # and cannot be pinned to a full SHA hash without authentication. Allow
-  # ref-pinning for this repository.
-  unpinned-uses:
-    config:
-      policies:
-        canonical/cs-github-actions/*: ref-pin
-
   # secrets-outside-env requires dedicated GitHub environments, which are
   # configured in repository/organization settings rather than in code.
   # This will become informational-only in zizmor >= v1.24.0.
