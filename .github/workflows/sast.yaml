@@ -11,7 +11,7 @@
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
   schedule:
     - cron: '0 2 * * 1'  # every Monday at 02:00 UTC, to keep SHA pins current
   workflow_dispatch:  # allow manual runs to refresh/verify SHA pins
